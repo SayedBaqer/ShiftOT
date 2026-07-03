@@ -352,6 +352,10 @@ input[type=time],input[type=number]{width:auto;}
       <div><div style="font-size:14px;font-weight:600">Public Holiday (all)</div><div style="font-size:12px;color:var(--mu);margin-top:1px">Mark every selected day as PH</div></div>
       <div class="tg" id="mPhTog" onclick="togMPH()"></div>
     </div>
+    <div style="display:flex;gap:8px;margin-top:7px">
+      <button class="btn bs" style="margin-top:0" onclick="copyMulti()">&#128203; Copy schedule</button>
+      <button class="btn bs" style="margin-top:0" id="mPasteBtn" onclick="pasteMulti()">&#128204; Paste</button>
+    </div>
     <button class="btn bs" onclick="clearMulti()">&#10005; Clear overrides for selected</button>
   </div>
 </div>
@@ -404,7 +408,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-6';
+var APP_VER='2026.07.03-7';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -420,7 +424,7 @@ var DEF_OT={
 var ST={
   cs:'2026-05-10',
   pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],
-  ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],
+  ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
   otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,
 };
@@ -430,7 +434,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','otRate','otCurr','offRate','phRate','linkCalOT','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','otRate','otCurr','offRate','phRate','linkCalOT','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -440,6 +444,7 @@ function loadST(){
       if(!ST.hl)ST.hl={};
       if(!ST.otCfgUser)ST.otCfgUser={};
       if(!ST.tp)ST.tp=[];
+      if(!ST.clip)ST.clip=[];
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
       if(ST.linkCalOT==null)ST.linkCalOT=true;
@@ -866,7 +871,34 @@ function openMulti(){
   document.getElementById('multiT').textContent='Edit '+ks.length+' day'+(ks.length>1?'s':'');
   renderMultiGrid(mSelSk);updateMHL('keep');
   var mt=document.getElementById('mPhTog');if(mt)mt.classList.remove('on');
+  var pb=document.getElementById('mPasteBtn');
+  if(pb){var n=(ST.clip&&ST.clip.length)||0;pb.innerHTML='&#128204; Paste'+(n?' ('+n+')':'');pb.style.opacity=n?'1':'.45';}
   document.getElementById('multiOv').classList.add('op');
+}
+function copyMulti(){
+  var ks=Object.keys(mSel).sort();
+  if(!ks.length)return;
+  ST.clip=ks.map(function(ds){return{sk:getShift(ds),ph:!!ST.ph[ds],hl:ST.hl[ds]||'',oth:(ST.otHours[ds]!=null?ST.otHours[ds]:null),rate:(ST.otRateDay[ds]!=null?ST.otRateDay[ds]:null)};});
+  savST();closeOv('multiOv');clearSel();
+  alert('Copied '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+'. Now touch & hold to select where to paste, then tap Paste.');
+}
+function pasteMulti(){
+  if(!ST.clip||!ST.clip.length){alert('Nothing copied yet — Copy a schedule first.');return;}
+  var ks=Object.keys(mSel).sort();
+  if(!ks.length){return;}
+  ks.forEach(function(ds,i){
+    var c=ST.clip[i%ST.clip.length];
+    var base=getBase(ds);
+    ST.ov[ds]=c.sk;
+    var baseOff=!SH[base]||!SH[base].s;var newDuty=SH[c.sk]&&SH[c.sk].s;
+    if(baseOff&&newDuty)ST.manualOT[ds]=true;else delete ST.manualOT[ds];
+    if(c.ph)ST.ph[ds]=true;else delete ST.ph[ds];
+    if(c.hl)ST.hl[ds]=c.hl;else delete ST.hl[ds];
+    if(c.oth!=null)ST.otHours[ds]=c.oth;else delete ST.otHours[ds];
+    if(c.rate!=null)ST.otRateDay[ds]=c.rate;else delete ST.otRateDay[ds];
+  });
+  savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
+  alert('Pasted onto '+ks.length+' day'+(ks.length!==1?'s':'')+'.');
 }
 function renderMultiGrid(cur){
   var g=document.getElementById('multiGrid');if(!g)return;g.innerHTML='';
@@ -1156,7 +1188,7 @@ function renderOTCfg(){
 }
 
 function resetOv(){if(confirm('Clear all overrides, notes, highlights?')){ST.ov={};ST.hl={};ST.nt={};ST.ph={};ST.manualOT={};ST.otHours={};ST.otRateDay={};savST();render();}}
-function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true};savST();render();}}
+function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true};savST();render();}}
 
 // ── OT PAGE ───────────────────────────────────────────────────────────────────
 function renderOTPage(){
