@@ -409,7 +409,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-11';
+var APP_VER='2026.07.03-12';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -832,14 +832,14 @@ function clearOv(){
 }
 
 // ── TOAST (auto-dismiss message) ─────────────────────────────────────────────
-function toast(msg){
+function toast(msg,ms){
   var t=document.getElementById('toast');
   if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
   t.textContent=msg;
   t.style.cssText='position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 80px);transform:translateX(-50%);z-index:600;background:linear-gradient(135deg,#6366F1,#10B981);color:#fff;padding:11px 18px;border-radius:22px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.45);max-width:86vw;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none';
   requestAnimationFrame(function(){t.style.opacity='1';});
   clearTimeout(t._h);
-  t._h=setTimeout(function(){t.style.opacity='0';},3500);
+  t._h=setTimeout(function(){t.style.opacity='0';},ms||1500);
 }
 
 // ── MULTI-DAY SELECT (touch & hold, drag) ────────────────────────────────────
@@ -898,7 +898,7 @@ function copyMulti(){
   if(!ks.length)return;
   ST.clip=ks.map(function(ds){return{sk:getShift(ds),ph:!!ST.ph[ds],hl:ST.hl[ds]||'',oth:(ST.otHours[ds]!=null?ST.otHours[ds]:null),rate:(ST.otRateDay[ds]!=null?ST.otRateDay[ds]:null)};});
   savST();closeOv('multiOv');clearSel();
-  toast('Copied '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' — open a day and tap Paste');
+  toast('Copied ✓',1500);
 }
 function pasteClipFrom(anchorDs){
   var start=pd(anchorDs);
