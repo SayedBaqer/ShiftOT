@@ -408,7 +408,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-7';
+var APP_VER='2026.07.03-8';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -935,6 +935,25 @@ function clearMulti(){
   savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
 }
 
+// ── CALENDAR SWIPE (prev/next month) ─────────────────────────────────────────
+function setupCalSwipe(){
+  var cnt=document.getElementById('cnt');if(!cnt)return;
+  var sx=0,sy=0,active=false;
+  cnt.addEventListener('touchstart',function(e){
+    if(e.touches.length!==1){active=false;return;}
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;active=true;
+  },{passive:true});
+  cnt.addEventListener('touchend',function(e){
+    if(!active){return;}active=false;
+    if(curTab!=='cal'||selMode||suppressTap)return;
+    var t=e.changedTouches[0];var dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.4){
+      if(dx>0){VM--;if(VM<0){VM=11;VY--;}}else{VM++;if(VM>11){VM=0;VY++;}}
+      render();afterNav();
+    }
+  },{passive:true});
+}
+
 // ── SWIPE-TO-DISMISS SHEETS ──────────────────────────────────────────────────
 function setupSheetSwipe(){
   document.querySelectorAll('.ov').forEach(function(ov){
@@ -1320,6 +1339,7 @@ document.getElementById('yr').textContent=new Date().getFullYear();
 render();
 setupGridSel();
 setupSheetSwipe();
+setupCalSwipe();
 </script>
 </body>
 </html>
