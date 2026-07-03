@@ -223,6 +223,7 @@ input[type=time],input[type=number]{width:auto;}
   <div class="swipeHint">Swipe left or right to cancel</div>
   <div class="shs">
     <div class="sg" id="shGrid"></div>
+    <div id="dayPasteRow" style="display:none;margin-top:10px"><button class="btn bp" id="dayPasteBtn" onclick="pasteFromDay()" style="margin-top:0"></button></div>
     <!-- OT toggle -->
     <div id="otRow" style="display:none;margin-top:12px;padding:11px 0;border-top:1px solid var(--bd)">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -408,7 +409,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-10';
+var APP_VER='2026.07.03-11';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -699,6 +700,8 @@ function openDay(ds){
   document.getElementById('rFrom').value=ds;document.getElementById('rTo').value=ds;
   var phTog=document.getElementById('phTog');if(phTog)phTog.classList.toggle('on',!!ST.ph[ds]);
   var phD=document.getElementById('phDesc');if(phD)phD.textContent=(parseFloat(ST.phRate)||1.5)+'× full duty hours';
+  var dpr=document.getElementById('dayPasteRow'),dpb=document.getElementById('dayPasteBtn');
+  if(dpr&&dpb){if(ST.clip&&ST.clip.length){dpr.style.display='block';dpb.innerHTML='&#128204; Paste '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from here';}else dpr.style.display='none';}
   var otSel=document.getElementById('otSel');if(otSel){var mv=ST.manualOT[ds];otSel.value=mv===true?'yes':mv===false?'no':'auto';}
   updateOTRow(editSk);updateRateRow();
   repOn=false;document.getElementById('repTg').classList.remove('on');document.getElementById('repOpts').style.display='none';
@@ -828,6 +831,17 @@ function clearOv(){
   savST();selDay=null;render();closeOv('dayOv');
 }
 
+// ── TOAST (auto-dismiss message) ─────────────────────────────────────────────
+function toast(msg){
+  var t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
+  t.textContent=msg;
+  t.style.cssText='position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 80px);transform:translateX(-50%);z-index:600;background:linear-gradient(135deg,#6366F1,#10B981);color:#fff;padding:11px 18px;border-radius:22px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.45);max-width:86vw;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none';
+  requestAnimationFrame(function(){t.style.opacity='1';});
+  clearTimeout(t._h);
+  t._h=setTimeout(function(){t.style.opacity='0';},3500);
+}
+
 // ── MULTI-DAY SELECT (touch & hold, drag) ────────────────────────────────────
 var selMode=false,selSet={},selAnchor=null,lpTimer=null,lpX=0,lpY=0,suppressTap=false;
 var mSelSk=null,mSel={},mHL='keep',mPH=false;
@@ -884,13 +898,10 @@ function copyMulti(){
   if(!ks.length)return;
   ST.clip=ks.map(function(ds){return{sk:getShift(ds),ph:!!ST.ph[ds],hl:ST.hl[ds]||'',oth:(ST.otHours[ds]!=null?ST.otHours[ds]:null),rate:(ST.otRateDay[ds]!=null?ST.otRateDay[ds]:null)};});
   savST();closeOv('multiOv');clearSel();
-  alert('Copied '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+'. Now touch & hold the day where it should start, then tap Paste.');
+  toast('Copied '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' — open a day and tap Paste');
 }
-function pasteMulti(){
-  if(!ST.clip||!ST.clip.length){alert('Nothing copied yet — Copy a schedule first.');return;}
-  var ks=Object.keys(mSel).sort();
-  if(!ks.length){return;}
-  var start=pd(ks[0]);
+function pasteClipFrom(anchorDs){
+  var start=pd(anchorDs);
   for(var i=0;i<ST.clip.length;i++){
     var ds=dk(aD(start,i));
     var c=ST.clip[i];
@@ -903,8 +914,20 @@ function pasteMulti(){
     if(c.oth!=null)ST.otHours[ds]=c.oth;else delete ST.otHours[ds];
     if(c.rate!=null)ST.otRateDay[ds]=c.rate;else delete ST.otRateDay[ds];
   }
+}
+function pasteMulti(){
+  if(!ST.clip||!ST.clip.length){toast('Nothing copied yet — Copy a schedule first');return;}
+  var ks=Object.keys(mSel).sort();
+  if(!ks.length){return;}
+  pasteClipFrom(ks[0]);
   savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
-  alert('Pasted '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from '+ks[0]+'.');
+  toast('Pasted '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from '+ks[0]);
+}
+function pasteFromDay(){
+  if(!editDs||!ST.clip||!ST.clip.length){toast('Nothing copied yet — Copy a schedule first');return;}
+  pasteClipFrom(editDs);
+  savST();render();closeOv('dayOv');if(curTab==='ot')refreshOT();
+  toast('Pasted '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from '+editDs);
 }
 function renderMultiGrid(cur){
   var g=document.getElementById('multiGrid');if(!g)return;g.innerHTML='';
