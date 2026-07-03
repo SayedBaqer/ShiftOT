@@ -408,7 +408,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-8';
+var APP_VER='2026.07.03-9';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -872,7 +872,11 @@ function openMulti(){
   renderMultiGrid(mSelSk);updateMHL('keep');
   var mt=document.getElementById('mPhTog');if(mt)mt.classList.remove('on');
   var pb=document.getElementById('mPasteBtn');
-  if(pb){var n=(ST.clip&&ST.clip.length)||0;pb.innerHTML='&#128204; Paste'+(n?' ('+n+')':'');pb.style.opacity=n?'1':'.45';}
+  if(pb){
+    var n=(ST.clip&&ST.clip.length)||0;
+    if(n){var sd=pd(Object.keys(mSel).sort()[0]);pb.innerHTML='&#128204; Paste '+n+'d from '+sd.toLocaleDateString('en-GB',{day:'numeric',month:'short'});pb.style.opacity='1';}
+    else{pb.innerHTML='&#128204; Paste';pb.style.opacity='.45';}
+  }
   document.getElementById('multiOv').classList.add('op');
 }
 function copyMulti(){
@@ -880,14 +884,16 @@ function copyMulti(){
   if(!ks.length)return;
   ST.clip=ks.map(function(ds){return{sk:getShift(ds),ph:!!ST.ph[ds],hl:ST.hl[ds]||'',oth:(ST.otHours[ds]!=null?ST.otHours[ds]:null),rate:(ST.otRateDay[ds]!=null?ST.otRateDay[ds]:null)};});
   savST();closeOv('multiOv');clearSel();
-  alert('Copied '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+'. Now touch & hold to select where to paste, then tap Paste.');
+  alert('Copied '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+'. Now touch & hold the day where it should start, then tap Paste.');
 }
 function pasteMulti(){
   if(!ST.clip||!ST.clip.length){alert('Nothing copied yet — Copy a schedule first.');return;}
   var ks=Object.keys(mSel).sort();
   if(!ks.length){return;}
-  ks.forEach(function(ds,i){
-    var c=ST.clip[i%ST.clip.length];
+  var start=pd(ks[0]);
+  for(var i=0;i<ST.clip.length;i++){
+    var ds=dk(aD(start,i));
+    var c=ST.clip[i];
     var base=getBase(ds);
     ST.ov[ds]=c.sk;
     var baseOff=!SH[base]||!SH[base].s;var newDuty=SH[c.sk]&&SH[c.sk].s;
@@ -896,9 +902,9 @@ function pasteMulti(){
     if(c.hl)ST.hl[ds]=c.hl;else delete ST.hl[ds];
     if(c.oth!=null)ST.otHours[ds]=c.oth;else delete ST.otHours[ds];
     if(c.rate!=null)ST.otRateDay[ds]=c.rate;else delete ST.otRateDay[ds];
-  });
+  }
   savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
-  alert('Pasted onto '+ks.length+' day'+(ks.length!==1?'s':'')+'.');
+  alert('Pasted '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from '+ks[0]+'.');
 }
 function renderMultiGrid(cur){
   var g=document.getElementById('multiGrid');if(!g)return;g.innerHTML='';
