@@ -38,9 +38,10 @@ html,body{height:100%;width:100%;position:fixed;overflow:hidden;background:#0A0A
 .ib{width:34px;height:34px;border-radius:10px;border:1px solid var(--bd);background:var(--s1);color:var(--tx);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .wdr{display:grid;grid-template-columns:repeat(7,1fr);padding:2px 8px 0;}
 .wd{text-align:center;font-size:9px;font-weight:700;color:var(--mu);padding:3px 0;text-transform:uppercase;}
-.cgr{display:grid;grid-template-columns:repeat(7,1fr);padding:2px 8px 6px;gap:2px;}
-.cd{border-radius:9px;padding:3px 1px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;min-height:52px;border:2px solid transparent;position:relative;cursor:pointer;}
+.cgr{display:grid;grid-template-columns:repeat(7,1fr);padding:3px 7px 10px;gap:5px;}
+.cd{border-radius:11px;padding:5px 1px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;border:2px solid transparent;position:relative;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .cd:active{transform:scale(.95);}
+.cd.msel{outline:3px solid #818CF8;outline-offset:-1px;background:rgba(129,140,248,.30)!important;}
 .cd.xo{opacity:.2;pointer-events:none;}
 .cd.tod .dn{background:var(--tx);color:var(--bg);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;}
 .cd.hn{border-color:currentColor;}
@@ -50,8 +51,8 @@ html,body{height:100%;width:100%;position:fixed;overflow:hidden;background:#0A0A
 .cd.hr2{background:rgba(239,68,68,.18)!important;}
 .cd.hg{background:rgba(16,185,129,.18)!important;}
 .cd.hb{background:rgba(129,140,248,.18)!important;}
-.dn{font-size:12px;font-weight:600;width:20px;height:20px;display:flex;align-items:center;justify-content:center;}
-.de{font-size:12px;line-height:1;}
+.dn{font-size:13px;font-weight:600;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.de{font-size:15px;line-height:1;}
 .ts{margin:6px 12px;padding:12px 14px;border-radius:14px;display:flex;align-items:center;gap:12px;cursor:pointer;}
 .leg{display:flex;flex-wrap:wrap;gap:6px;padding:2px 12px 7px;}
 .li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--mu);}
@@ -119,6 +120,12 @@ input[type=time],input[type=number]{width:auto;}
 
     <!-- SETTINGS PAGE -->
     <div id="setPage" style="display:none;padding:14px">
+      <div class="sct">General</div>
+      <div class="sc2"><div class="sr2" style="cursor:default">
+        <div><div class="sl2">Link Calendar &amp; Overtime dates</div><div class="ss2">Overtime range follows the month you view</div></div>
+        <div class="tg" id="linkTog" onclick="togLink()"></div>
+      </div></div>
+
       <div class="sct">Cycle Start Date</div>
       <div class="sc2"><div class="sr2" style="cursor:default">
         <div><div class="sl2">Pattern Start</div><div class="ss2">Day 1 of your cycle</div></div>
@@ -183,8 +190,8 @@ input[type=time],input[type=number]{width:auto;}
       <div style="background:var(--s2);border-radius:12px;padding:12px;margin-bottom:12px">
         <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Calculate for date range</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
-          <div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">From</div><input type="date" id="otFrom" onchange="refreshOT()"/></div>
-          <div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">To</div><input type="date" id="otTo" onchange="refreshOT()"/></div>
+          <div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">From</div><input type="date" id="otFrom" onchange="otRangeChanged()"/></div>
+          <div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">To</div><input type="date" id="otTo" onchange="otRangeChanged()"/></div>
         </div>
       </div>
       <div id="otResult"></div>
@@ -314,6 +321,33 @@ input[type=time],input[type=number]{width:auto;}
 </div>
 </div>
 
+<!-- MULTI-DAY SHEET -->
+<div class="ov" id="multiOv">
+<div class="sh">
+  <div class="shh"></div><div class="sht" id="multiT">Edit days</div>
+  <div class="shs">
+    <div style="font-size:13px;color:var(--mu);margin-bottom:9px">Set the same shift for all selected days.</div>
+    <div class="sg" id="multiGrid"></div>
+    <div style="margin-top:12px;margin-bottom:5px;font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.07em;text-transform:uppercase">Highlight colour</div>
+    <div style="display:flex;gap:8px;margin-bottom:2px">
+      <div id="mhlL" onclick="setMHL('keep')" style="width:30px;height:30px;border-radius:8px;background:var(--s2);border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--mu)">keep</div>
+      <div id="mhlN" onclick="setMHL('')"  style="width:30px;height:30px;border-radius:8px;background:var(--s2);border:2px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px">&#10005;</div>
+      <div id="mhlY" onclick="setMHL('y')" style="width:30px;height:30px;border-radius:8px;background:#FBBF24;border:2px solid transparent;cursor:pointer;"></div>
+      <div id="mhlR" onclick="setMHL('r')" style="width:30px;height:30px;border-radius:8px;background:#EF4444;border:2px solid transparent;cursor:pointer;"></div>
+      <div id="mhlG" onclick="setMHL('g')" style="width:30px;height:30px;border-radius:8px;background:#10B981;border:2px solid transparent;cursor:pointer;"></div>
+      <div id="mhlB" onclick="setMHL('b')" style="width:30px;height:30px;border-radius:8px;background:#818CF8;border:2px solid transparent;cursor:pointer;"></div>
+    </div>
+    <div style="margin-top:10px;padding:10px 0;border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:14px;font-weight:600">Public Holiday (all)</div><div style="font-size:12px;color:var(--mu);margin-top:1px">Mark every selected day as PH</div></div>
+      <div class="tg" id="mPhTog" onclick="togMPH()"></div>
+    </div>
+    <button class="btn bp" onclick="applyMulti()">&#10003; Apply to selected</button>
+    <button class="btn bs" onclick="clearMulti()">&#10005; Clear overrides for selected</button>
+    <button class="btn bs" onclick="closeMulti()" style="margin-top:4px">Cancel</button>
+  </div>
+</div>
+</div>
+
 <!-- PAT DAY PICKER -->
 <div class="ov" id="pdOv">
 <div class="sh">
@@ -358,7 +392,7 @@ var ST={
   pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],
   ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
-  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,
+  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,
 };
 
 function loadST(){
@@ -366,7 +400,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','otRate','otCurr','offRate','phRate','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','otRate','otCurr','offRate','phRate','linkCalOT','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -378,6 +412,7 @@ function loadST(){
       if(!ST.tp)ST.tp=[];
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
+      if(ST.linkCalOT==null)ST.linkCalOT=true;
     }
   }catch(e){}
   // Build otCfg fresh from DEF_OT + user overrides
@@ -534,7 +569,7 @@ function mkCell(date,other,tds){
   if(!hl)cell.style.background=bg;
   if(hasNote)cell.style.color=col;
   if(isTp)cell.style.outline='1px solid rgba(251,191,36,.25)';
-  if(!other)cell.onclick=(function(d){return function(){openDay(d);};})(ds);
+  if(!other){cell.dataset.ds=ds;cell.onclick=(function(d){return function(){openDay(d);};})(ds);}
   var dn=document.createElement('div');dn.className='dn';dn.style.color=col;dn.textContent=date.getDate();
   var de=document.createElement('div');de.className='de';de.textContent=sh.e;
   cell.appendChild(dn);cell.appendChild(de);
@@ -550,9 +585,25 @@ function renderStrip(tds){
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
-document.getElementById('prevBtn').onclick=function(){VM--;if(VM<0){VM=11;VY--;}render();};
-document.getElementById('nextBtn').onclick=function(){VM++;if(VM>11){VM=0;VY++;}render();};
-document.getElementById('todayBtn').onclick=function(){var n=new Date();VY=n.getFullYear();VM=n.getMonth();render();};
+function afterNav(){syncOTToCal();if(curTab==='ot')refreshOT();}
+document.getElementById('prevBtn').onclick=function(){VM--;if(VM<0){VM=11;VY--;}render();afterNav();};
+document.getElementById('nextBtn').onclick=function(){VM++;if(VM>11){VM=0;VY++;}render();afterNav();};
+document.getElementById('todayBtn').onclick=function(){var n=new Date();VY=n.getFullYear();VM=n.getMonth();render();afterNav();};
+
+// ── CALENDAR ↔ OVERTIME RANGE LINK ───────────────────────────────────────────
+function syncOTToCal(){
+  if(!ST.linkCalOT)return;
+  var f=document.getElementById('otFrom'),t=document.getElementById('otTo');
+  if(f)f.value=dk(new Date(VY,VM,1));
+  if(t)t.value=dk(new Date(VY,VM+1,0));
+}
+function otRangeChanged(){
+  if(ST.linkCalOT){
+    var fv=document.getElementById('otFrom').value;
+    if(fv){var d=pd(fv);VY=d.getFullYear();VM=d.getMonth();render();}
+  }
+  refreshOT();
+}
 document.getElementById('patBtn').onclick=openPat;
 
 function showTab(t){
@@ -586,7 +637,7 @@ function showTab(t){
 function closeOv(id){document.getElementById(id).classList.remove('op');}
 window.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.ov').forEach(function(o){
-    o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('op');});
+    o.addEventListener('click',function(e){if(e.target===o){o.classList.remove('op');if(o.id==='multiOv')clearSel();}});
   });
 });
 
@@ -594,6 +645,7 @@ window.addEventListener('DOMContentLoaded',function(){
 var editDs=null,editSk=null,editHL='',repOn=false,reEv=1,reOc=4;
 
 function openDay(ds){
+  if(suppressTap||selMode){suppressTap=false;return;}
   editDs=ds;selDay=ds;render();
   var d=pd(ds);var DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   document.getElementById('dayT').textContent=DN[d.getDay()]+', '+d.toLocaleDateString('en-GB',{day:'numeric',month:'long'});
@@ -733,6 +785,86 @@ function clearOv(){
   savST();selDay=null;render();closeOv('dayOv');
 }
 
+// ── MULTI-DAY SELECT (touch & hold, drag) ────────────────────────────────────
+var selMode=false,selSet={},selAnchor=null,lpTimer=null,lpX=0,lpY=0,suppressTap=false;
+var mSelSk=null,mSel={},mHL='keep',mPH=false;
+
+function cellFromPoint(x,y){var el=document.elementFromPoint(x,y);while(el&&!(el.classList&&el.classList.contains('cd')))el=el.parentElement;return el;}
+function paintSel(){var g=document.getElementById('cgr');if(!g)return;Array.prototype.forEach.call(g.children,function(cell){var ds=cell.dataset&&cell.dataset.ds;if(ds&&selSet[ds])cell.classList.add('msel');else cell.classList.remove('msel');});}
+function setSelRange(a,b){var da=pd(a),db=pd(b);if(da>db){var t=da;da=db;db=t;}selSet={};var c=new Date(da);while(c<=db){selSet[dk(c)]=true;c=aD(c,1);}}
+function clearSel(){selSet={};selMode=false;paintSel();}
+
+function setupGridSel(){
+  var g=document.getElementById('cgr');if(!g)return;
+  g.addEventListener('touchstart',function(e){
+    var t=e.touches[0];var cell=cellFromPoint(t.clientX,t.clientY);
+    if(!cell||!cell.dataset.ds){return;}
+    lpX=t.clientX;lpY=t.clientY;
+    clearTimeout(lpTimer);
+    lpTimer=setTimeout(function(){
+      selMode=true;selAnchor=cell.dataset.ds;selSet={};selSet[selAnchor]=true;
+      if(navigator.vibrate)navigator.vibrate(15);
+      paintSel();
+    },350);
+  },{passive:true});
+  g.addEventListener('touchmove',function(e){
+    var t=e.touches[0];
+    if(!selMode){var dx=Math.abs(t.clientX-lpX),dy=Math.abs(t.clientY-lpY);if(dx>10||dy>10)clearTimeout(lpTimer);return;}
+    e.preventDefault();
+    var cell=cellFromPoint(t.clientX,t.clientY);
+    if(cell&&cell.dataset.ds){setSelRange(selAnchor,cell.dataset.ds);paintSel();}
+  },{passive:false});
+  g.addEventListener('touchend',function(e){
+    clearTimeout(lpTimer);
+    if(selMode){e.preventDefault();suppressTap=true;setTimeout(function(){suppressTap=false;},450);selMode=false;openMulti();}
+  },{passive:false});
+  g.addEventListener('touchcancel',function(){clearTimeout(lpTimer);if(selMode){selMode=false;clearSel();}});
+}
+
+function openMulti(){
+  var ks=Object.keys(selSet);if(!ks.length)return;
+  mSel={};ks.forEach(function(k){mSel[k]=true;});
+  mSelSk=getShift(ks[0]);mHL='keep';mPH=false;
+  document.getElementById('multiT').textContent='Edit '+ks.length+' day'+(ks.length>1?'s':'');
+  renderMultiGrid(mSelSk);updateMHL('keep');
+  var mt=document.getElementById('mPhTog');if(mt)mt.classList.remove('on');
+  document.getElementById('multiOv').classList.add('op');
+}
+function renderMultiGrid(cur){
+  var g=document.getElementById('multiGrid');if(!g)return;g.innerHTML='';
+  Object.keys(SH).forEach(function(k){
+    var s=SH[k];var isSel=k===cur;
+    var el=document.createElement('div');el.className='so'+(isSel?' sl':'');
+    el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
+    if(isSel)el.style.borderColor=SC[k]||'#818CF8';
+    el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
+    el.addEventListener('click',function(ev){ev.stopPropagation();mSelSk=k;renderMultiGrid(k);});
+    g.appendChild(el);
+  });
+}
+function updateMHL(hl){
+  var map={L:'keep',N:'',Y:'y',R:'r',G:'g',B:'b'};
+  ['L','N','Y','R','G','B'].forEach(function(c){var el=document.getElementById('mhl'+c);if(!el)return;var match=map[c]===hl;el.style.borderColor=match?'#fff':'transparent';el.style.transform=match?'scale(1.15)':'scale(1)';});
+}
+function setMHL(h){mHL=h;updateMHL(h);}
+function togMPH(){mPH=!mPH;document.getElementById('mPhTog').classList.toggle('on',mPH);}
+function closeMulti(){closeOv('multiOv');clearSel();}
+function applyMulti(){
+  Object.keys(mSel).forEach(function(ds){
+    var base=getBase(ds);
+    ST.ov[ds]=mSelSk;
+    var baseOff=!SH[base]||!SH[base].s;var newDuty=SH[mSelSk]&&SH[mSelSk].s;
+    if(baseOff&&newDuty)ST.manualOT[ds]=true;else delete ST.manualOT[ds];
+    if(mHL!=='keep'){if(mHL)ST.hl[ds]=mHL;else delete ST.hl[ds];}
+    if(mPH)ST.ph[ds]=true;
+  });
+  savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
+}
+function clearMulti(){
+  Object.keys(mSel).forEach(function(ds){delete ST.ov[ds];delete ST.manualOT[ds];delete ST.ph[ds];delete ST.hl[ds];delete ST.nt[ds];delete ST.otHours[ds];delete ST.otRateDay[ds];});
+  savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
+}
+
 // ── PATTERN ──────────────────────────────────────────────────────────────────
 var ePat=[],eLen=12;
 function openPat(){ePat=[].concat(ST.pat);eLen=ePat.length;document.getElementById('cyLen').textContent=eLen;renderPD();document.getElementById('patOv').classList.add('op');}
@@ -774,11 +906,13 @@ function loadSettings(){
   var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(cur);
   var oR=document.getElementById('offRateInp');if(oR)oR.value=ST.offRate!=null?ST.offRate:1.5;
   var pR=document.getElementById('phRateInp');if(pR)pR.value=ST.phRate!=null?ST.phRate:1.5;
+  var lt=document.getElementById('linkTog');if(lt)lt.classList.toggle('on',ST.linkCalOT!==false);
   document.getElementById('yr').textContent=new Date().getFullYear();
   renderOTCfg();renderTpList();
 }
 function savCS(v){ST.cs=v;savST();render();}
 function savRate(){ST.otRate=parseFloat(document.getElementById('otRate').value)||0.317;savST();}
+function togLink(){ST.linkCalOT=!ST.linkCalOT;document.getElementById('linkTog').classList.toggle('on',ST.linkCalOT);savST();}
 function savOffRate(){ST.offRate=parseFloat(document.getElementById('offRateInp').value)||1.5;savST();renderOTCfg();}
 function savPhRate(){ST.phRate=parseFloat(document.getElementById('phRateInp').value)||1.5;savST();renderOTCfg();}
 function savCurr(){var v=document.getElementById('otCurr').value;ST.otCurr=v;var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(v);savST();}
@@ -855,15 +989,18 @@ function renderOTCfg(){
 }
 
 function resetOv(){if(confirm('Clear all overrides, notes, highlights?')){ST.ov={};ST.hl={};ST.nt={};ST.ph={};ST.manualOT={};ST.otHours={};ST.otRateDay={};savST();render();}}
-function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5};savST();render();}}
+function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true};savST();render();}}
 
 // ── OT PAGE ───────────────────────────────────────────────────────────────────
 function renderOTPage(){
-  var today=new Date();today.setHours(0,0,0,0);
-  var mS=new Date(today.getFullYear(),today.getMonth(),1);
-  var mE=new Date(today.getFullYear(),today.getMonth()+1,0);
-  document.getElementById('otFrom').value=dk(mS);
-  document.getElementById('otTo').value=dk(mE);
+  if(ST.linkCalOT){
+    // Follow the month currently shown on the calendar
+    syncOTToCal();
+  } else {
+    var today=new Date();today.setHours(0,0,0,0);
+    document.getElementById('otFrom').value=dk(new Date(today.getFullYear(),today.getMonth(),1));
+    document.getElementById('otTo').value=dk(new Date(today.getFullYear(),today.getMonth()+1,0));
+  }
   refreshOT();
 }
 
@@ -982,6 +1119,7 @@ function refreshOT(){
 loadST();
 document.getElementById('yr').textContent=new Date().getFullYear();
 render();
+setupGridSel();
 </script>
 </body>
 </html>
