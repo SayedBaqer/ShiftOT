@@ -180,6 +180,10 @@ input[type=time],input[type=number]{width:auto;}
       <div id="tpList"></div>
       <button class="btn bs" onclick="openTpSh(null)" style="margin-top:4px">+ Add Temporary Period Pattern</button>
 
+      <div class="sct">Import Schedule</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Paste a rota from Excel (a row of dates and a row of shift codes) and map each code to a shift.</div>
+      <button class="btn bs" onclick="openImport()">&#128229; Import from Excel</button>
+
       <div class="sct">Reset</div>
       <div class="sc2">
         <div class="sr2" onclick="resetOv()"><div class="sl2" style="color:var(--sick)">Clear All Overrides &amp; Notes</div></div>
@@ -353,6 +357,25 @@ input[type=time],input[type=number]{width:auto;}
 </div>
 </div>
 
+<!-- IMPORT SHEET -->
+<div class="ov" id="impOv">
+<div class="sh">
+  <div class="shh"></div>
+  <div class="shTop"><div class="sht">Import from Excel</div><button class="btnTop" onclick="applyImport()">&#10003; Import</button></div>
+  <div class="swipeHint">Swipe left or right to cancel</div>
+  <div class="shs">
+    <div style="font-size:13px;color:var(--mu);margin-bottom:9px;line-height:1.55">In Excel, select two rows and copy, then paste below:<br>&#8226; Row 1 &rarr; <b style="color:var(--tx)">dates</b> (e.g. 1/7/2026)<br>&#8226; Row 2 &rarr; <b style="color:var(--tx)">shift codes</b> (e.g. M, N, LM, O)<br><span style="color:#5A5A80">One row only = codes applied day-by-day from the start date.</span></div>
+    <textarea id="impTA" placeholder="Paste here…" style="min-height:92px;font-family:'Courier New',monospace;font-size:12px"></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0">
+      <div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">Start / anchor date</div><input type="date" id="impStart"/></div>
+      <div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">End date (optional)</div><input type="date" id="impEnd"/></div>
+    </div>
+    <button class="btn bs" onclick="parseImport()">&#128269; Preview &amp; map codes</button>
+    <div id="impPreview" style="margin-top:10px"></div>
+  </div>
+</div>
+</div>
+
 <!-- PAT DAY PICKER -->
 <div class="ov" id="pdOv">
 <div class="sh">
@@ -380,7 +403,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-4';
+var APP_VER='2026.07.03-5';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -906,6 +929,98 @@ function setupSheetSwipe(){
       }
     },{passive:false});
   });
+}
+
+// ── EXCEL / PASTE IMPORT ──────────────────────────────────────────────────────
+var impPairs=[];
+var IMP_GUESS={M:'morning',MOR:'morning',MORNING:'morning',LM:'lmorning',LMOR:'lmorning','LONG MORNING':'lmorning',A:'afternoon',AF:'afternoon',AFT:'afternoon',AFTERNOON:'afternoon',N:'night',NIGHT:'night',LN:'lnight',LNIGHT:'lnight','LONG NIGHT':'lnight',O:'off',OFF:'off',X:'off',R:'off',REST:'off',S:'sick',SL:'sick',SICK:'sick',AL:'leave',L:'leave',LV:'leave',LEAVE:'leave','ANNUAL LEAVE':'leave',T:'training',TR:'training',TRN:'training',TRAINING:'training'};
+function guessShift(code){
+  var c=String(code).toUpperCase().trim();
+  if(IMP_GUESS[c])return IMP_GUESS[c];
+  var byName=Object.keys(SH).filter(function(k){return SH[k].n.toUpperCase().replace(/[^A-Z]/g,'').indexOf(c.replace(/[^A-Z]/g,''))===0;})[0];
+  return byName||'';
+}
+function splitRow(line){return line.split(/\t|,|;/).map(function(x){return x.trim();});}
+function parseImpDate(s,ay,am){
+  s=String(s).trim();if(!s)return null;
+  if(/^\d{5}$/.test(s)){var n=parseInt(s,10);var d=new Date(1899,11,30);d.setDate(d.getDate()+n);return d;}
+  var m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if(m){var dd=+m[1],mm=+m[2],yy=+m[3];if(yy<100)yy+=2000;return new Date(yy,mm-1,dd);}
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})$/);if(m&&ay!=null)return new Date(ay,(+m[2])-1,+m[1]);
+  m=s.match(/^(\d{1,2})$/);if(m&&ay!=null&&am!=null)return new Date(ay,am,+m[1]);
+  var d2=new Date(s);if(!isNaN(d2.getTime()))return d2;
+  return null;
+}
+function openImport(){
+  document.getElementById('impTA').value='';
+  document.getElementById('impStart').value=dk(new Date(VY,VM,1));
+  document.getElementById('impEnd').value='';
+  document.getElementById('impPreview').innerHTML='';
+  impPairs=[];
+  document.getElementById('impOv').classList.add('op');
+}
+function parseImport(){
+  var raw=document.getElementById('impTA').value;
+  var startV=document.getElementById('impStart').value;
+  var endV=document.getElementById('impEnd').value;
+  var anchor=startV?pd(startV):new Date(VY,VM,1);
+  var ay=anchor.getFullYear(),am=anchor.getMonth();
+  var pv=document.getElementById('impPreview');
+  var lines=raw.split(/\r?\n/).filter(function(l){return l.trim()!=='';});
+  if(!lines.length){pv.innerHTML='<div style="color:#EF4444;font-size:12px">Nothing to parse — paste your rows first.</div>';return;}
+  var dates=null,codes=null;
+  if(lines.length>=2){
+    var a=splitRow(lines[0]),b=splitRow(lines[1]);
+    var aNum=a.filter(function(x){return /^\D*\d/.test(x)&&/[\/\-]/.test(x)||/^\d{4,5}$/.test(x);}).length;
+    var bNum=b.filter(function(x){return /^\D*\d/.test(x)&&/[\/\-]/.test(x)||/^\d{4,5}$/.test(x);}).length;
+    if(aNum>=bNum){dates=a;codes=b;}else{dates=b;codes=a;}
+  } else { codes=splitRow(lines[0]); }
+  impPairs=[];
+  for(var i=0;i<codes.length;i++){
+    var code=(codes[i]||'').trim();if(!code)continue;
+    var d=null;
+    if(dates&&dates[i]!=null&&dates[i]!=='')d=parseImpDate(dates[i],ay,am);
+    if(!d)d=aD(anchor,i);
+    impPairs.push({ds:dk(d),code:code});
+  }
+  if(endV)impPairs=impPairs.filter(function(p){return p.ds<=endV;});
+  renderImportPreview();
+}
+function renderImportPreview(){
+  var el=document.getElementById('impPreview');
+  if(!impPairs.length){el.innerHTML='<div style="color:#EF4444;font-size:12px">No days parsed. Check your paste.</div>';return;}
+  var uniq=[];impPairs.forEach(function(p){var u=p.code.toUpperCase();if(uniq.indexOf(u)<0)uniq.push(u);});
+  var h='<div style="font-size:12px;color:var(--mu);margin-bottom:8px">Parsed <b style="color:var(--tx)">'+impPairs.length+'</b> days &middot; '+impPairs[0].ds+' &rarr; '+impPairs[impPairs.length-1].ds+'</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#FBBF24;margin-bottom:6px">Map each code to a shift</div>';
+  uniq.forEach(function(c){
+    var g=guessShift(c);
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="min-width:46px;font-weight:700;font-family:monospace;background:var(--s2);border-radius:6px;padding:7px 8px;text-align:center">'+c+'</div>';
+    h+='<select data-code="'+c+'" class="impMap" style="flex:1"><option value="">— Skip —</option>';
+    Object.keys(SH).forEach(function(k){h+='<option value="'+k+'"'+(k===g?' selected':'')+'>'+SH[k].e+' '+SH[k].n+'</option>';});
+    h+='</select></div>';
+  });
+  h+='<div style="font-size:11px;color:var(--mu);margin-top:8px;font-family:monospace">'+impPairs.slice(0,14).map(function(p){return p.code;}).join(' ')+(impPairs.length>14?' …':'')+'</div>';
+  el.innerHTML=h;
+}
+function applyImport(){
+  if(!impPairs.length)parseImport();
+  if(!impPairs.length){alert('Paste your schedule and tap Preview first.');return;}
+  var map={};
+  document.querySelectorAll('.impMap').forEach(function(s){map[s.getAttribute('data-code')]=s.value;});
+  var applied=0,skipped=0;
+  impPairs.forEach(function(p){
+    var sk=map[p.code.toUpperCase()];
+    if(!sk||!SH[sk]){skipped++;return;}
+    var base=getBase(p.ds);
+    ST.ov[p.ds]=sk;
+    var baseOff=!SH[base]||!SH[base].s;var newDuty=SH[sk]&&SH[sk].s;
+    if(baseOff&&newDuty)ST.manualOT[p.ds]=true;else delete ST.manualOT[p.ds];
+    applied++;
+  });
+  savST();render();closeOv('impOv');
+  if(curTab==='ot')refreshOT();
+  alert('Imported '+applied+' day'+(applied!==1?'s':'')+(skipped?(' ('+skipped+' skipped)'):'')+'.');
 }
 
 // ── PATTERN ──────────────────────────────────────────────────────────────────
