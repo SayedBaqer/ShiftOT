@@ -381,6 +381,7 @@ input[type=time],input[type=number]{width:auto;}
 <div class="sh">
   <div class="shh"></div><div class="sht" id="pdT">Day 1</div>
   <div class="shs">
+    <div style="font-size:12px;color:var(--mu);margin-bottom:9px">Tap to select &middot; double-tap to apply &amp; close</div>
     <div class="sg" id="pdGrid"></div>
     <button class="btn bs" onclick="closeOv('pdOv')" style="margin-top:10px">Done</button>
   </div>
@@ -403,7 +404,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-5';
+var APP_VER='2026.07.03-6';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -673,6 +674,13 @@ window.addEventListener('DOMContentLoaded',function(){
 
 // ── DAY SHEET ────────────────────────────────────────────────────────────────
 var editDs=null,editSk=null,editHL='',repOn=false,reEv=1,reOc=4;
+// Double-tap / double-click a shift tile to apply it directly.
+var _lastTap={id:null,key:null,t:0};
+function dblTap(id,key){
+  var t=Date.now();
+  if(_lastTap.id===id&&_lastTap.key===key&&(t-_lastTap.t)<350){_lastTap={id:null,key:null,t:0};return true;}
+  _lastTap={id:id,key:key,t:t};return false;
+}
 
 function openDay(ds){
   if(suppressTap||selMode){suppressTap=false;return;}
@@ -704,7 +712,7 @@ function renderSG(gId,cur){
     el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
     if(isSel)el.style.borderColor=SC[k]||'#818CF8';
     el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
-    el.addEventListener('click',function(ev){ev.stopPropagation();editSk=k;renderSG(gId,k);updateOTRow(k);updateRateRow();});
+    el.addEventListener('click',function(ev){ev.stopPropagation();editSk=k;renderSG(gId,k);updateOTRow(k);updateRateRow();if(dblTap('shGrid',k))applyOv();});
     g.appendChild(el);
   });
 }
@@ -868,7 +876,7 @@ function renderMultiGrid(cur){
     el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
     if(isSel)el.style.borderColor=SC[k]||'#818CF8';
     el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
-    el.addEventListener('click',function(ev){ev.stopPropagation();mSelSk=k;renderMultiGrid(k);});
+    el.addEventListener('click',function(ev){ev.stopPropagation();mSelSk=k;renderMultiGrid(k);if(dblTap('multiGrid',k))applyMulti();});
     g.appendChild(el);
   });
 }
@@ -1050,7 +1058,7 @@ function renderSG2(gId,cur){
     el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
     if(isSel)el.style.borderColor=SC[k]||'#818CF8';
     el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
-    el.addEventListener('click',function(ev){ev.stopPropagation();if(pdC==='tp'){tpEP[pdI]=k;renderTPD();}else{ePat[pdI]=k;renderPD();}renderSG2(gId,k);});
+    el.addEventListener('click',function(ev){ev.stopPropagation();if(pdC==='tp'){tpEP[pdI]=k;renderTPD();}else{ePat[pdI]=k;renderPD();}renderSG2(gId,k);if(dblTap('pdGrid',k))closeOv('pdOv');});
     g.appendChild(el);
   });
 }
