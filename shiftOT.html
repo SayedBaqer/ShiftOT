@@ -386,6 +386,24 @@ input[type=time],input[type=number]{width:auto;}
 </div>
 </div>
 
+<!-- EMOJI PICKER -->
+<div class="ov" id="emojiOv">
+<div class="sh">
+  <div class="shh"></div>
+  <div class="shTop"><div class="sht" id="emojiT">Choose icon</div></div>
+  <div class="swipeHint">Swipe left or right to cancel</div>
+  <div class="shs">
+    <div id="emojiGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px"></div>
+    <div style="margin-top:13px;margin-bottom:5px;font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.07em;text-transform:uppercase">Or type / paste your own</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="emojiCustom" maxlength="4" placeholder="🙂" style="width:64px;text-align:center;font-size:20px"/>
+      <button class="btn bp" style="margin-top:0;flex:1" onclick="applyEmojiCustom()">Use this</button>
+    </div>
+    <button class="btn bs" onclick="resetEmojiForShift()">&#8635; Reset to default icon</button>
+  </div>
+</div>
+</div>
+
 <!-- PAT DAY PICKER -->
 <div class="ov" id="pdOv">
 <div class="sh">
@@ -425,7 +443,7 @@ function applyShiftCustom(){
   if(ST.shCustom)Object.keys(ST.shCustom).forEach(function(k){if(!SH[k])return;var c=ST.shCustom[k]||{};if(c.e)SH[k].e=c.e;if(c.c){SC[k]=c.c;SBG[k]=darkenHex(c.c);}});
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-16';
+var APP_VER='2026.07.04-17';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1202,20 +1220,40 @@ function savOffRate(){ST.offRate=parseFloat(document.getElementById('offRateInp'
 function savPhRate(){ST.phRate=parseFloat(document.getElementById('phRateInp').value)||1.5;savST();renderOTCfg();toast('Saved ✓');}
 function savCurr(){var v=document.getElementById('otCurr').value;ST.otCurr=v;var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(v);savST();toast('Saved ✓');}
 
+var EMOJIS=['🌅','🌄','☀️','🌤️','⛅','🌞','🌙','🌛','🌜','🌚','⭐','🌟','✨','🔆','🌃','🌌','🛌','😴','💤','🛏️','🏥','💼','🩺','💊','🚑','🧑‍⚕️','👮','🚒','🚓','📚','📖','✏️','🎓','🔑','🗝️','🚪','🏖️','🌴','✈️','🧳','🏝️','⚓','🤒','🤕','🤧','😷','🩹','🩺','📅','📆','🕐','🕒','⏰','⏱️','⌚','💰','💵','🪙','🏠','🏢','🚗','🚌','🏭','🔧','😀','🙂','😎','🥳','🔥','⚡','💪','⭕','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🟠','🟡','🟢','🔵','🟣','🔴','⚪','⚫'];
+var emojiKey=null;
+function openEmojiPicker(k){
+  emojiKey=k;
+  document.getElementById('emojiT').textContent='Icon · '+(SH[k]?SH[k].n:'');
+  document.getElementById('emojiCustom').value='';
+  var g=document.getElementById('emojiGrid');g.innerHTML='';
+  EMOJIS.forEach(function(e){
+    var b=document.createElement('div');b.textContent=e;
+    var sel=SH[k]&&SH[k].e===e;
+    b.style.cssText='font-size:23px;text-align:center;padding:8px 0;background:var(--s2);border-radius:9px;cursor:pointer;border:2px solid '+(sel?'#818CF8':'transparent');
+    b.onclick=(function(em){return function(){pickEmoji(em);};})(e);
+    g.appendChild(b);
+  });
+  ovOpenTs=Date.now();
+  document.getElementById('emojiOv').classList.add('op');
+}
+function pickEmoji(e){if(emojiKey)setShiftEmoji(emojiKey,e);closeOv('emojiOv');}
+function applyEmojiCustom(){var v=document.getElementById('emojiCustom').value.trim();if(v&&emojiKey)setShiftEmoji(emojiKey,v);closeOv('emojiOv');}
+function resetEmojiForShift(){if(emojiKey)setShiftEmoji(emojiKey,'');closeOv('emojiOv');}
 function renderShiftAppearance(){
   var c=document.getElementById('shAppSec');if(!c)return;c.innerHTML='';
   Object.keys(SH).forEach(function(k){
     var s=SH[k];var col=SC[k]||'#4B5563';var bg=SBG[k]||'#111118';
     var row=document.createElement('div');
     row.style.cssText='display:flex;align-items:center;gap:10px;background:'+bg+';border-left:3px solid '+col+';border-radius:12px;padding:9px 11px;margin-bottom:8px';
-    var eIn=document.createElement('input');eIn.type='text';eIn.value=s.e;eIn.setAttribute('maxlength','4');
-    eIn.style.cssText='width:48px;text-align:center;font-size:20px;padding:6px 4px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;flex-shrink:0';
-    eIn.onchange=(function(key){return function(){setShiftEmoji(key,this.value);};})(k);
+    var eBtn=document.createElement('div');eBtn.textContent=s.e;
+    eBtn.style.cssText='width:48px;text-align:center;font-size:22px;padding:7px 4px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;flex-shrink:0;cursor:pointer';
+    eBtn.onclick=(function(key){return function(){openEmojiPicker(key);};})(k);
     var nm=document.createElement('div');nm.style.cssText='flex:1;font-size:14px;font-weight:700;color:'+col;nm.textContent=s.n+(s.s?' · '+s.s+'–'+s.f:'');
     var cIn=document.createElement('input');cIn.type='color';cIn.value=toHex(col);
     cIn.style.cssText='width:46px;height:38px;padding:0;border:1px solid var(--bd);background:none;border-radius:8px;flex-shrink:0';
     cIn.onchange=(function(key){return function(){setShiftColor(key,this.value);};})(k);
-    row.appendChild(eIn);row.appendChild(nm);row.appendChild(cIn);
+    row.appendChild(eBtn);row.appendChild(nm);row.appendChild(cIn);
     c.appendChild(row);
   });
 }
