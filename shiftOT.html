@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="ShiftOT"/>
+<meta name="apple-mobile-web-app-title" content="Shift Cal & OT"/>
 <meta name="theme-color" content="#0A0A12"/>
-<title>ShiftOT</title>
+<title>Shift Calendar &amp; OT</title>
+<link rel="apple-touch-icon" id="appIcon"/>
+<link rel="icon" id="favIcon"/>
 <style>
 :root{
   --bg:#0A0A12;--s1:#12121E;--s2:#1A1A28;--bd:#222232;
@@ -499,8 +501,8 @@ function applyBg(){
   document.body.style.background=c;
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-19';
-var APP_NOTE='Arabic language + RTL, custom background colour, in-app Guide, and this update alert with what\'s-new.';
+var APP_VER='2026.07.04-20';
+var APP_NOTE='Renamed to “Shift Calendar & OT” with a new app icon.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1583,8 +1585,31 @@ function checkUpdate(){
 }
 document.addEventListener('visibilitychange',function(){if(!document.hidden)checkUpdate();});
 
+// ── APP ICON (drawn on canvas, PNG data URI) ─────────────────────────────────
+function rr(x,X,Y,W,H,R){x.beginPath();x.moveTo(X+R,Y);x.arcTo(X+W,Y,X+W,Y+H,R);x.arcTo(X+W,Y+H,X,Y+H,R);x.arcTo(X,Y+H,X,Y,R);x.arcTo(X,Y,X+W,Y,R);x.closePath();}
+function makeIcon(s){
+  var c=document.createElement('canvas');c.width=s;c.height=s;var x=c.getContext('2d');
+  var g=x.createLinearGradient(0,0,s,s);g.addColorStop(0,'#6366F1');g.addColorStop(1,'#10B981');
+  rr(x,0,0,s,s,s*0.22);x.fillStyle=g;x.fill();
+  var pw=s*0.62,ph=s*0.58,px=(s-pw)/2,py=s*0.25;
+  rr(x,px,py,pw,ph,s*0.075);x.fillStyle='#ffffff';x.fill();
+  x.save();rr(x,px,py,pw,ph,s*0.075);x.clip();
+  x.fillStyle='#EF4444';x.fillRect(px,py,pw,ph*0.30);x.restore();
+  x.fillStyle='#ffffff';
+  x.beginPath();x.arc(px+pw*0.30,py,s*0.028,0,7);x.fill();
+  x.beginPath();x.arc(px+pw*0.70,py,s*0.028,0,7);x.fill();
+  x.fillStyle='#3730A3';x.textAlign='center';x.textBaseline='middle';
+  x.font='800 '+(s*0.26)+'px -apple-system,Helvetica,Arial,sans-serif';
+  x.fillText('OT',s/2,py+ph*0.63);
+  x.fillStyle='#10B981';x.font='800 '+(s*0.11)+'px -apple-system,Helvetica,Arial,sans-serif';
+  x.fillText('SHIFT',s/2,py+ph*0.30);
+  return c.toDataURL('image/png');
+}
+function setAppIcon(){try{var a=document.getElementById('appIcon');if(a)a.href=makeIcon(180);var f=document.getElementById('favIcon');if(f)f.href=makeIcon(64);}catch(e){}}
+
 // ── BOOT ─────────────────────────────────────────────────────────────────────
 loadST();
+setAppIcon();
 applyBg();
 document.getElementById('yr').textContent=new Date().getFullYear();
 render();
