@@ -409,7 +409,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.03-12';
+var APP_VER='2026.07.04-13';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -674,7 +674,7 @@ function showTab(t){
 function closeOv(id){document.getElementById(id).classList.remove('op');}
 window.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.ov').forEach(function(o){
-    o.addEventListener('click',function(e){if(e.target===o){o.classList.remove('op');if(o.id==='multiOv')clearSel();}});
+    o.addEventListener('click',function(e){if(e.target===o){if(Date.now()-ovOpenTs<450)return;o.classList.remove('op');if(o.id==='multiOv')clearSel();}});
   });
 });
 
@@ -708,6 +708,7 @@ function openDay(ds){
   document.getElementById('reV').textContent='1';document.getElementById('ocV').textContent='4';
   var ba=document.getElementById('applyBtnArea');
   if(ba)ba.innerHTML='<button class="btn bs" onclick="clearOv()">&#10005; Clear Override for Range</button>';
+  ovOpenTs=Date.now();
   document.getElementById('dayOv').classList.add('op');
 }
 
@@ -843,7 +844,7 @@ function toast(msg,ms){
 }
 
 // ── MULTI-DAY SELECT (touch & hold, drag) ────────────────────────────────────
-var selMode=false,selSet={},selAnchor=null,lpTimer=null,lpX=0,lpY=0,suppressTap=false;
+var selMode=false,selSet={},selAnchor=null,lpTimer=null,lpX=0,lpY=0,suppressTap=false,ovOpenTs=0;
 var mSelSk=null,mSel={},mHL='keep',mPH=false;
 
 function cellFromPoint(x,y){var el=document.elementFromPoint(x,y);while(el&&!(el.classList&&el.classList.contains('cd')))el=el.parentElement;return el;}
@@ -891,6 +892,7 @@ function openMulti(){
     if(n){var sd=pd(Object.keys(mSel).sort()[0]);pb.innerHTML='&#128204; Paste '+n+'d from '+sd.toLocaleDateString('en-GB',{day:'numeric',month:'short'});pb.style.opacity='1';}
     else{pb.innerHTML='&#128204; Paste';pb.style.opacity='.45';}
   }
+  ovOpenTs=Date.now();
   document.getElementById('multiOv').classList.add('op');
 }
 function copyMulti(){
