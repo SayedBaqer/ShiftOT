@@ -172,6 +172,11 @@ input[type=time],input[type=number]{width:auto;}
         </div>
       </div>
 
+      <div class="sct">Shift Appearance</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Tap an emoji to change it (use your keyboard&#8217;s emoji), and pick a colour for each shift.</div>
+      <div id="shAppSec"></div>
+      <button class="btn bs" onclick="resetShiftAppearance()" style="margin-top:2px">&#8635; Reset appearance to default</button>
+
       <div class="sct">Overtime Config (per shift type)</div>
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Set segments for each shift. Off&#8594;duty &amp; PH use the default rates above (override per day in the day editor). For normal days only extra OT-segment hours count as overtime pay.</div>
       <div id="otCfgSec"></div>
@@ -408,8 +413,19 @@ var SH={
 };
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
+// Capture factory defaults so appearance can be customised and reset.
+var DEF_SE={},DEF_SCv={},DEF_SBGv={};
+Object.keys(SH).forEach(function(k){DEF_SE[k]=SH[k].e;});
+Object.keys(SC).forEach(function(k){DEF_SCv[k]=SC[k];});
+Object.keys(SBG).forEach(function(k){DEF_SBGv[k]=SBG[k];});
+function darkenHex(hex){hex=String(hex).replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);var f=0.13;return 'rgb('+Math.round(r*f)+','+Math.round(g*f)+','+Math.round(b*f)+')';}
+function toHex(c){if(!c)return '#4B5563';c=String(c).trim();if(c[0]==='#'){if(c.length===4)return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return c.slice(0,7);}var m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(m)return '#'+[m[1],m[2],m[3]].map(function(x){return ('0'+parseInt(x,10).toString(16)).slice(-2);}).join('');return '#4B5563';}
+function applyShiftCustom(){
+  Object.keys(SH).forEach(function(k){SH[k].e=DEF_SE[k];SC[k]=DEF_SCv[k];SBG[k]=DEF_SBGv[k];});
+  if(ST.shCustom)Object.keys(ST.shCustom).forEach(function(k){if(!SH[k])return;var c=ST.shCustom[k]||{};if(c.e)SH[k].e=c.e;if(c.c){SC[k]=c.c;SBG[k]=darkenHex(c.c);}});
+}
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-15';
+var APP_VER='2026.07.04-16';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -425,7 +441,7 @@ var DEF_OT={
 var ST={
   cs:'2026-05-10',
   pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],
-  ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],
+  ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
   otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,
 };
@@ -435,7 +451,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','otRate','otCurr','offRate','phRate','linkCalOT','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -446,6 +462,7 @@ function loadST(){
       if(!ST.otCfgUser)ST.otCfgUser={};
       if(!ST.tp)ST.tp=[];
       if(!ST.clip)ST.clip=[];
+      if(!ST.shCustom)ST.shCustom={};
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
       if(ST.linkCalOT==null)ST.linkCalOT=true;
@@ -461,6 +478,7 @@ function loadST(){
       offOT:JSON.parse(JSON.stringify(def.offOT)),
     };
   });
+  applyShiftCustom();
 }
 
 function savST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}}
@@ -1175,7 +1193,7 @@ function loadSettings(){
   var lt=document.getElementById('linkTog');if(lt)lt.classList.toggle('on',ST.linkCalOT!==false);
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
-  renderOTCfg();renderTpList();
+  renderShiftAppearance();renderOTCfg();renderTpList();
 }
 function savCS(v){ST.cs=v;savST();render();toast('Saved ✓');}
 function savRate(){ST.otRate=parseFloat(document.getElementById('otRate').value)||0.317;savST();toast('Saved ✓');}
@@ -1184,6 +1202,36 @@ function savOffRate(){ST.offRate=parseFloat(document.getElementById('offRateInp'
 function savPhRate(){ST.phRate=parseFloat(document.getElementById('phRateInp').value)||1.5;savST();renderOTCfg();toast('Saved ✓');}
 function savCurr(){var v=document.getElementById('otCurr').value;ST.otCurr=v;var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(v);savST();toast('Saved ✓');}
 
+function renderShiftAppearance(){
+  var c=document.getElementById('shAppSec');if(!c)return;c.innerHTML='';
+  Object.keys(SH).forEach(function(k){
+    var s=SH[k];var col=SC[k]||'#4B5563';var bg=SBG[k]||'#111118';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;background:'+bg+';border-left:3px solid '+col+';border-radius:12px;padding:9px 11px;margin-bottom:8px';
+    var eIn=document.createElement('input');eIn.type='text';eIn.value=s.e;eIn.setAttribute('maxlength','4');
+    eIn.style.cssText='width:48px;text-align:center;font-size:20px;padding:6px 4px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;flex-shrink:0';
+    eIn.onchange=(function(key){return function(){setShiftEmoji(key,this.value);};})(k);
+    var nm=document.createElement('div');nm.style.cssText='flex:1;font-size:14px;font-weight:700;color:'+col;nm.textContent=s.n+(s.s?' · '+s.s+'–'+s.f:'');
+    var cIn=document.createElement('input');cIn.type='color';cIn.value=toHex(col);
+    cIn.style.cssText='width:46px;height:38px;padding:0;border:1px solid var(--bd);background:none;border-radius:8px;flex-shrink:0';
+    cIn.onchange=(function(key){return function(){setShiftColor(key,this.value);};})(k);
+    row.appendChild(eIn);row.appendChild(nm);row.appendChild(cIn);
+    c.appendChild(row);
+  });
+}
+function setShiftEmoji(k,v){
+  v=(v||'').trim();if(!ST.shCustom)ST.shCustom={};if(!ST.shCustom[k])ST.shCustom[k]={};
+  if(v)ST.shCustom[k].e=v;else delete ST.shCustom[k].e;
+  if(!ST.shCustom[k].e&&ST.shCustom[k].c==null)delete ST.shCustom[k];
+  applyShiftCustom();savST();render();renderShiftAppearance();toast('Saved ✓');
+}
+function setShiftColor(k,v){
+  if(!ST.shCustom)ST.shCustom={};if(!ST.shCustom[k])ST.shCustom[k]={};
+  ST.shCustom[k].c=v;applyShiftCustom();savST();render();renderShiftAppearance();renderOTCfg();toast('Saved ✓');
+}
+function resetShiftAppearance(){
+  if(confirm('Reset all shift colours and icons to default?')){ST.shCustom={};applyShiftCustom();savST();render();renderShiftAppearance();renderOTCfg();toast('Appearance reset ✓');}
+}
 function renderOTCfg(){
   var cont=document.getElementById('otCfgSec');if(!cont)return;cont.innerHTML='';
   var ws=Object.keys(SH).filter(function(k){return SH[k]&&SH[k].s;});
@@ -1256,7 +1304,7 @@ function renderOTCfg(){
 }
 
 function resetOv(){if(confirm('Clear all overrides, notes, highlights?')){ST.ov={};ST.hl={};ST.nt={};ST.ph={};ST.manualOT={};ST.otHours={};ST.otRateDay={};savST();render();}}
-function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true};savST();render();}}
+function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true};applyShiftCustom();savST();render();}}
 
 // ── OT PAGE ───────────────────────────────────────────────────────────────────
 function renderOTPage(){
