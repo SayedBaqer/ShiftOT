@@ -126,6 +126,24 @@ input[type=time],input[type=number]{width:auto;}
 
     <!-- SETTINGS PAGE -->
     <div id="setPage" style="display:none;padding:14px">
+      <div class="sct">Language &amp; Display</div>
+      <div class="sc2">
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">Language / اللغة</div></div>
+          <select id="langSel" onchange="savLang()" style="width:auto;padding:7px 10px">
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
+          </select>
+        </div>
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">Background colour</div><div class="ss2">App background behind everything</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="color" id="bgInp" value="#0A0A12" onchange="savBg()" style="width:46px;height:38px;padding:0;border:1px solid var(--bd);background:none;border-radius:8px"/>
+            <button class="ib" onclick="resetBg()" title="Reset">&#8635;</button>
+          </div>
+        </div>
+      </div>
+
       <div class="sct">General</div>
       <div class="sc2"><div class="sr2" style="cursor:default">
         <div><div class="sl2">Link Calendar &amp; Overtime dates</div><div class="ss2">Overtime range follows the month you view</div></div>
@@ -188,6 +206,9 @@ input[type=time],input[type=number]{width:auto;}
       <div class="sct">Import Schedule</div>
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Paste a rota from Excel (a row of dates and a row of shift codes) and map each code to a shift.</div>
       <button class="btn bs" onclick="openImport()">&#128229; Import from Excel</button>
+
+      <div class="sct">Guide</div>
+      <div id="guideSec"></div>
 
       <div class="sct">Reset</div>
       <div class="sc2">
@@ -442,8 +463,44 @@ function applyShiftCustom(){
   Object.keys(SH).forEach(function(k){SH[k].e=DEF_SE[k];SC[k]=DEF_SCv[k];SBG[k]=DEF_SBGv[k];});
   if(ST.shCustom)Object.keys(ST.shCustom).forEach(function(k){if(!SH[k])return;var c=ST.shCustom[k]||{};if(c.e)SH[k].e=c.e;if(c.c){SC[k]=c.c;SBG[k]=darkenHex(c.c);}});
 }
+
+// ── LANGUAGE (English / Arabic) ──────────────────────────────────────────────
+var DEF_SN={};Object.keys(SH).forEach(function(k){DEF_SN[k]=SH[k].n;});
+var WD_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var LANG='en';
+var AR={
+  weekdays:['أحد','اثن','ثلا','أرب','خمي','جمع','سبت'],
+  months:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+  shifts:{morning:'صباحي',lmorning:'صباحي طويل',afternoon:'بعد الظهر',night:'ليلي',lnight:'ليلي طويل',off:'إجازة',sick:'إجازة مرضية',leave:'إجازة سنوية',training:'تدريب'},
+  Calendar:'التقويم',Overtime:'الوقت الإضافي',Settings:'الإعدادات',
+  General:'عام','Cycle Start Date':'تاريخ بداية الدورة','Currency & Rate':'العملة والأجر',
+  'Shift Appearance':'مظهر الورديات','Overtime Config (per shift type)':'إعداد الوقت الإضافي (لكل وردية)',
+  'Temporary Period Patterns':'أنماط فترات مؤقتة','Import Schedule':'استيراد الجدول','Reset':'إعادة تعيين',
+  'Language & Display':'اللغة والعرض','Guide':'الدليل',
+  'Update available':'يوجد تحديث','Update':'تحديث'
+};
+function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
+function localMonth(i){return (LANG==='ar')?AR.months[i]:MN[i];}
+function applyLang(){
+  LANG=(ST.lang==='ar')?'ar':'en';
+  var h=document.documentElement;h.dir=LANG==='ar'?'rtl':'ltr';h.setAttribute('lang',LANG);
+  Object.keys(SH).forEach(function(k){SH[k].n=(LANG==='ar'&&AR.shifts[k])?AR.shifts[k]:DEF_SN[k];});
+  var wd=document.querySelectorAll('.wdr .wd');
+  Array.prototype.forEach.call(wd,function(el,i){el.textContent=(LANG==='ar')?AR.weekdays[i]:WD_EN[i];});
+  var scts=document.querySelectorAll('.sct');
+  Array.prototype.forEach.call(scts,function(el){if(!el.dataset.en)el.dataset.en=el.textContent.trim();el.textContent=t(el.dataset.en);});
+  var NAV={nCal:'Calendar',nOT:'Overtime',nSet:'Settings'};
+  Object.keys(NAV).forEach(function(id){var b=document.getElementById(id);if(!b)return;var ni=b.querySelector('.ni');b.innerHTML='';if(ni)b.appendChild(ni);b.appendChild(document.createTextNode(t(NAV[id])));});
+}
+// ── BACKGROUND COLOUR ────────────────────────────────────────────────────────
+function applyBg(){
+  var c=ST.bgColor&&/^#|rgb/.test(ST.bgColor)?ST.bgColor:'#0A0A12';
+  document.documentElement.style.setProperty('--bg',c);
+  document.body.style.background=c;
+}
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-18';
+var APP_VER='2026.07.04-19';
+var APP_NOTE='Arabic language + RTL, custom background colour, in-app Guide, and this update alert with what\'s-new.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -461,7 +518,7 @@ var ST={
   pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],
   ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
-  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,
+  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',
 };
 
 function loadST(){
@@ -469,7 +526,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -481,6 +538,8 @@ function loadST(){
       if(!ST.tp)ST.tp=[];
       if(!ST.clip)ST.clip=[];
       if(!ST.shCustom)ST.shCustom={};
+      if(!ST.lang)ST.lang='en';
+      if(ST.bgColor==null)ST.bgColor='';
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
       if(ST.linkCalOT==null)ST.linkCalOT=true;
@@ -611,7 +670,7 @@ function calcOT(fromDs,toDs){
 var VY=new Date().getFullYear(),VM=new Date().getMonth(),curTab='cal',selDay=null;
 
 function render(){
-  document.getElementById('mTitle').textContent=MN[VM]+' '+VY;
+  document.getElementById('mTitle').textContent=localMonth(VM)+' '+VY;
   var today=new Date();today.setHours(0,0,0,0);var tds=dk(today);
   var first=new Date(VY,VM,1),last=new Date(VY,VM+1,0);
   var pad=first.getDay();
@@ -1209,9 +1268,45 @@ function loadSettings(){
   var oR=document.getElementById('offRateInp');if(oR)oR.value=ST.offRate!=null?ST.offRate:1.5;
   var pR=document.getElementById('phRateInp');if(pR)pR.value=ST.phRate!=null?ST.phRate:1.5;
   var lt=document.getElementById('linkTog');if(lt)lt.classList.toggle('on',ST.linkCalOT!==false);
+  var lg=document.getElementById('langSel');if(lg)lg.value=ST.lang||'en';
+  var bg=document.getElementById('bgInp');if(bg)bg.value=toHex(ST.bgColor||'#0A0A12');
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
-  renderShiftAppearance();renderOTCfg();renderTpList();
+  renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
+}
+function savLang(){ST.lang=document.getElementById('langSel').value;savST();applyLang();render();renderGuide();renderShiftAppearance();renderOTCfg();toast('Saved ✓');}
+function savBg(){ST.bgColor=document.getElementById('bgInp').value;savST();applyBg();toast('Saved ✓');}
+function resetBg(){ST.bgColor='';var el=document.getElementById('bgInp');if(el)el.value='#0A0A12';savST();applyBg();toast('Reset ✓');}
+function renderGuide(){
+  var c=document.getElementById('guideSec');if(!c)return;
+  var en=[
+    ['Edit a day','Tap any day to set its shift, overtime, public holiday, note, highlight colour — or paste.'],
+    ['Apply fast','Double-tap a shift tile to apply it instantly.'],
+    ['Select many days','Touch &amp; hold a day, then drag across others to select several and edit them together.'],
+    ['Copy &amp; paste schedule','Select days → Copy. Then tap one day and Paste to lay the block from there, or select a longer period to repeat the pattern.'],
+    ['Change month','Swipe the calendar left or right, or use the ‹ › arrows.'],
+    ['Overtime &amp; pay','Set your hourly rate and the off-duty / public-holiday multipliers. The Overtime tab totals pay for any date range.'],
+    ['Per-day OT / PH','Inside a day, toggle Public Holiday, set OT = Yes, hours, and a custom rate.'],
+    ['Import from Excel','Settings → Import: paste a row of dates and a row of shift codes, map each code, and import.'],
+    ['Colours &amp; icons','Settings → Shift Appearance: change every shift’s colour and emoji.'],
+    ['Patterns','The ⚙ button (top) sets your repeating base rota. Temporary Period Patterns override a date range.'],
+    ['Updates','When a new version is live, an Update banner shows at the top with what’s new — tap it to load the latest.']
+  ];
+  var ar=[
+    ['تعديل اليوم','اضغط أي يوم لضبط الوردية والوقت الإضافي والعطلة الرسمية والملاحظة واللون، أو للصق الجدول.'],
+    ['تطبيق سريع','اضغط ضغطتين على الوردية لتطبيقها فوراً.'],
+    ['تحديد عدة أيام','اضغط مطوّلاً على يوم ثم اسحب فوق الأيام لتحديد عدة أيام وتعديلها معاً.'],
+    ['نسخ ولصق الجدول','حدّد الأيام ← نسخ. ثم اضغط يوماً واحداً والصق لوضع الكتلة منه، أو حدّد فترة أطول لتكرار النمط.'],
+    ['تغيير الشهر','اسحب التقويم يميناً أو يساراً، أو استخدم السهمين ‹ ›.'],
+    ['الوقت الإضافي والأجر','اضبط أجر الساعة ومعاملات خارج الدوام والعطلة الرسمية. تبويب الوقت الإضافي يحسب الأجر لأي فترة.'],
+    ['الإضافي/العطلة لكل يوم','داخل اليوم فعّل العطلة الرسمية أو اضبط الوقت الإضافي = نعم والساعات ومعدلاً مخصصاً.'],
+    ['الاستيراد من إكسل','الإعدادات ← استيراد: الصق صف التواريخ وصف رموز الورديات، اربط كل رمز، ثم استورد.'],
+    ['الألوان والأيقونات','الإعدادات ← مظهر الورديات: غيّر لون وأيقونة كل وردية.'],
+    ['الأنماط','زر ⚙ (بالأعلى) يضبط نمط الدوام المتكرر. أنماط الفترات المؤقتة تتجاوز نطاقاً زمنياً.'],
+    ['التحديثات','عند توفر إصدار جديد يظهر شريط تحديث بالأعلى يوضح الجديد — اضغطه لتحميل الأحدث.']
+  ];
+  var items=(LANG==='ar')?ar:en;var side=(LANG==='ar')?'right':'left';
+  c.innerHTML=items.map(function(it){return '<div style="background:var(--s2);border-'+side+':3px solid #818CF8;border-radius:10px;padding:9px 11px;margin-bottom:7px"><div style="font-weight:700;font-size:13px;margin-bottom:2px">'+it[0]+'</div><div style="font-size:12px;color:var(--mu);line-height:1.5">'+it[1]+'</div></div>';}).join('');
 }
 function savCS(v){ST.cs=v;savST();render();toast('Saved ✓');}
 function savRate(){ST.otRate=parseFloat(document.getElementById('otRate').value)||0.317;savST();toast('Saved ✓');}
@@ -1342,7 +1437,7 @@ function renderOTCfg(){
 }
 
 function resetOv(){if(confirm('Clear all overrides, notes, highlights?')){ST.ov={};ST.hl={};ST.nt={};ST.ph={};ST.manualOT={};ST.otHours={};ST.otRateDay={};savST();render();}}
-function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true};applyShiftCustom();savST();render();}}
+function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:''};applyShiftCustom();applyLang();applyBg();savST();render();}}
 
 // ── OT PAGE ───────────────────────────────────────────────────────────────────
 function renderOTPage(){
@@ -1468,18 +1563,21 @@ function refreshOT(){
   }
 }
 
-// ── AUTO UPDATE CHECK (applies directly) ─────────────────────────────────────
+// ── UPDATE ALERT (shows what's new, reloads on tap) ──────────────────────────
+function showUpdateBanner(v,note){
+  var b=document.getElementById('updBanner');
+  if(!b){b=document.createElement('div');b.id='updBanner';document.body.appendChild(b);}
+  b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:600;background:linear-gradient(135deg,#6366F1,#10B981);color:#fff;padding:calc(env(safe-area-inset-top) + 9px) 14px 11px;font-size:13px;box-shadow:0 2px 14px rgba(0,0,0,.45);cursor:pointer;text-align:'+(LANG==='ar'?'right':'left');
+  b.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:800">&#8635; '+t('Update available')+' (v'+v+')</div>'+(note?'<div style="font-weight:500;opacity:.93;margin-top:2px;font-size:12px;line-height:1.4">'+note+'</div>':'')+'</div><button style="background:#fff;color:#111;border:none;border-radius:16px;padding:8px 16px;font-weight:800;font-family:inherit;flex-shrink:0;cursor:pointer">'+t('Update')+'</button></div>';
+  b.onclick=function(){location.href=location.pathname+'?v='+encodeURIComponent(v);};
+}
 function checkUpdate(){
   try{
     if(location.protocol.indexOf('http')!==0)return;
-    fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
-      var m=t.match(/APP_VER='([^']+)'/);
-      if(!m||!m[1]||m[1]===APP_VER)return;
-      var last=null;try{last=sessionStorage.getItem('sc_ot_upd');}catch(e){}
-      if(last===m[1])return; // already reloaded for this version this session — avoid loops
-      try{sessionStorage.setItem('sc_ot_upd',m[1]);}catch(e){}
-      toast('Updating to v'+m[1]+'…',2500);
-      setTimeout(function(){location.href=location.pathname+'?v='+encodeURIComponent(m[1]);},700);
+    fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(txt){
+      var m=txt.match(/APP_VER='([^']+)'/);if(!m||!m[1]||m[1]===APP_VER)return;
+      var nm=txt.match(/APP_NOTE='([^']*)'/);
+      showUpdateBanner(m[1],nm?nm[1]:'');
     }).catch(function(){});
   }catch(e){}
 }
@@ -1487,8 +1585,10 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
 loadST();
+applyBg();
 document.getElementById('yr').textContent=new Date().getFullYear();
 render();
+applyLang();
 setupGridSel();
 setupSheetSwipe();
 setupCalSwipe();
