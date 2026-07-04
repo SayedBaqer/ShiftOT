@@ -471,26 +471,89 @@ var DEF_SN={};Object.keys(SH).forEach(function(k){DEF_SN[k]=SH[k].n;});
 var WD_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var LANG='en';
 var AR={
-  weekdays:['أحد','اثن','ثلا','أرب','خمي','جمع','سبت'],
+  weekdays:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],
   months:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
-  shifts:{morning:'صباحي',lmorning:'صباحي طويل',afternoon:'بعد الظهر',night:'ليلي',lnight:'ليلي طويل',off:'إجازة',sick:'إجازة مرضية',leave:'إجازة سنوية',training:'تدريب'},
-  Calendar:'التقويم',Overtime:'الوقت الإضافي',Settings:'الإعدادات',
-  General:'عام','Cycle Start Date':'تاريخ بداية الدورة','Currency & Rate':'العملة والأجر',
-  'Shift Appearance':'مظهر الورديات','Overtime Config (per shift type)':'إعداد الوقت الإضافي (لكل وردية)',
+  shifts:{morning:'نهار',lmorning:'نهار طويل',afternoon:'مسائي',night:'ليل',lnight:'ليل طويل',off:'راحة',sick:'إجازة مرضية',leave:'إجازة سنوية',training:'تدريب'},
+  Calendar:'التقويم',Overtime:'الإضافي',Settings:'الإعدادات',
+  General:'عام','Cycle Start Date':'بداية الدورة','Currency & Rate':'العملة والأجر',
+  'Shift Appearance':'مظهر الورديات','Overtime Config (per shift type)':'إعداد الإضافي (لكل وردية)',
   'Temporary Period Patterns':'أنماط فترات مؤقتة','Import Schedule':'استيراد الجدول','Reset':'إعادة تعيين',
   'Language & Display':'اللغة والعرض','Guide':'الدليل',
-  'Update available':'يوجد تحديث','Update':'تحديث'
+  'Update available':'يوجد تحديث','Update':'تحديث',
+  // General / settings
+  'Link Calendar & Overtime dates':'ربط تواريخ التقويم والإضافي','Overtime range follows the month you view':'نطاق الإضافي يتبع الشهر المعروض',
+  'Background colour':'لون الخلفية','App background behind everything':'خلفية التطبيق خلف كل شيء',
+  'Pattern Start':'بداية النمط','Day 1 of your cycle':'اليوم الأول من دورتك',
+  'Currency':'العملة','Hourly Rate':'أجر الساعة','Base pay per hour':'الأجر الأساسي للساعة',
+  'Off-Duty OT Rate':'معدل الإضافي خارج الدوام','Public Holiday Rate':'معدل العطلة الرسمية',
+  'Reset appearance to default':'إعادة المظهر الافتراضي',
+  'No temporary periods yet.':'لا توجد فترات مؤقتة بعد.',
+  '+ Add Temporary Period Pattern':'+ إضافة نمط فترة مؤقتة',
+  'Import from Excel':'استيراد من إكسل','Choose icon':'اختر أيقونة',
+  'Clear All Overrides & Notes':'مسح كل التعديلات والملاحظات','Full Reset':'إعادة تعيين كاملة',
+  'Or type / paste your own':'أو اكتب / الصق أيقونتك','Use this':'استخدم هذه','Reset to default icon':'استرجاع الأيقونة الافتراضية',
+  // Day editor
+  'Edit Day':'تعديل اليوم','Public Holiday':'عطلة رسمية',
+  'Highlight colour':'لون التمييز','Note':'ملاحظة','Add a note for this day...':'أضف ملاحظة لهذا اليوم...',
+  'Apply to date range':'تطبيق على نطاق تواريخ','From':'من','To':'إلى',
+  'Repeat override':'تكرار التعديل','e.g. every week x4':'مثال: كل أسبوع ×4','Every':'كل','Times':'مرات',
+  'Days':'أيام','Weeks':'أسابيع','Months':'أشهر','Auto':'تلقائي','Yes - OT':'نعم - إضافي','No - Normal':'لا - عادي',
+  'Full shift':'الوردية كاملة','Swipe left or right to cancel':'اسحب يميناً أو يساراً للإلغاء',
+  '✓ Apply':'✓ تطبيق','✕ Clear Override for Range':'✕ مسح تعديل النطاق','Cancel':'إلغاء','Done':'تم',
+  // Pattern / period sheets
+  'Rotating Base Pattern':'نمط الدوام الأساسي','Tap each day to set shift. Repeats forever.':'اضغط كل يوم لضبط الوردية. يتكرر دائماً.',
+  'Cycle length (days)':'طول الدورة (أيام)','Save Pattern':'حفظ النمط','Cycle length':'طول الدورة',
+  'Temporary Period Pattern':'نمط فترة مؤقتة','New Period Pattern':'نمط فترة جديد','Edit Period':'تعديل الفترة',
+  'Name':'الاسم','Start':'البداية','End':'النهاية','Save Period Pattern':'حفظ نمط الفترة',
+  'Tap to select · double-tap to apply & close':'اضغط للتحديد · اضغط مرتين للتطبيق والإغلاق',
+  // Multi
+  'Edit days':'تعديل الأيام','Set the same shift for all selected days.':'اضبط نفس الوردية لكل الأيام المحددة.',
+  'Public Holiday (all)':'عطلة رسمية (للكل)','Mark every selected day as PH':'اجعل كل يوم محدد عطلة رسمية',
+  // OT page
+  'Calculate for date range':'احسب لنطاق تواريخ','Overtime Days':'أيام الوقت الإضافي','Public Holiday Days':'أيام العطلات الرسمية',
+  'All Work Days by Shift':'كل أيام العمل حسب الوردية','No Overtime or Public Holidays':'لا يوجد وقت إضافي أو عطلات',
+  '💰 Overtime Calculator':'💰 حاسبة الوقت الإضافي',
+  // strip / misc
+  'Tomorrow':'غداً','Rest day':'يوم راحة','OT':'إضافي','PH':'عطلة',
+  'Sun':'الأحد','Mon':'الاثنين','Tue':'الثلاثاء','Wed':'الأربعاء','Thu':'الخميس','Fri':'الجمعة','Sat':'السبت',
+  'SUMMARY':'الملخص','OT HRS':'ساعات إضافية','PH HRS':'ساعات عطلة','TOTAL PAY':'إجمالي الأجر','OT+PH':'إضافي+عطلة',
+  '📋 Copy schedule':'📋 نسخ الجدول','✕ Clear overrides for selected':'✕ مسح تعديلات المحدد',
+  'Hours (Off-Duty):':'الساعات (خارج الدوام):','Longer shift':'وردية أطول','Shift swap (same hours) — no auto OT':'تبديل وردية (نفس الساعات) — لا إضافي تلقائي',
+  'Reset ✓':'تم الاسترجاع ✓','Saved ✓':'تم الحفظ ✓','Pattern saved ✓':'تم حفظ النمط ✓','Period saved ✓':'تم حفظ الفترة ✓','Appearance reset ✓':'تم استرجاع المظهر ✓'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
+// Translate known leaf labels under root (reversible; only touches dictionary strings).
+function walkTranslate(root){
+  if(!root||root.nodeType!==1)return;
+  var list=[root];
+  if(root.querySelectorAll)Array.prototype.push.apply(list,root.querySelectorAll('*'));
+  for(var i=0;i<list.length;i++){
+    var el=list[i],tg=el.tagName;
+    if(tg==='SCRIPT'||tg==='STYLE'||tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||tg==='OPTION')continue;
+    if(el.children&&el.children.length>0)continue;
+    var raw=el.getAttribute('data-en');
+    if(raw==null){var cur=el.textContent.trim();if(!AR[cur])continue;raw=el.textContent;el.setAttribute('data-en',raw);}
+    var key=raw.trim();
+    var target=(LANG==='ar'&&AR[key])?AR[key]:raw;
+    if(el.textContent!==target)el.textContent=target;
+  }
+}
+var _mo;
+function startAutoTranslate(){
+  if(_mo||typeof MutationObserver==='undefined')return;
+  _mo=new MutationObserver(function(muts){
+    if(LANG!=='ar')return;
+    for(var i=0;i<muts.length;i++){var an=muts[i].addedNodes;for(var j=0;j<an.length;j++){if(an[j].nodeType===1)walkTranslate(an[j]);}}
+  });
+  _mo.observe(document.body,{childList:true,subtree:true});
+}
 function localMonth(i){return (LANG==='ar')?AR.months[i]:MN[i];}
+function syncShiftNames(){Object.keys(SH).forEach(function(k){SH[k].n=(LANG==='ar'&&AR.shifts[k])?AR.shifts[k]:DEF_SN[k];});}
 function applyLang(){
   LANG=(ST.lang==='ar')?'ar':'en';
   var h=document.documentElement;h.dir=LANG==='ar'?'rtl':'ltr';h.setAttribute('lang',LANG);
-  Object.keys(SH).forEach(function(k){SH[k].n=(LANG==='ar'&&AR.shifts[k])?AR.shifts[k]:DEF_SN[k];});
-  var wd=document.querySelectorAll('.wdr .wd');
-  Array.prototype.forEach.call(wd,function(el,i){el.textContent=(LANG==='ar')?AR.weekdays[i]:WD_EN[i];});
-  var scts=document.querySelectorAll('.sct');
-  Array.prototype.forEach.call(scts,function(el){if(!el.dataset.en)el.dataset.en=el.textContent.trim();el.textContent=t(el.dataset.en);});
+  syncShiftNames();
+  walkTranslate(document.body);
   var NAV={nCal:'Calendar',nOT:'Overtime',nSet:'Settings'};
   Object.keys(NAV).forEach(function(id){var b=document.getElementById(id);if(!b)return;var ni=b.querySelector('.ni');b.innerHTML='';if(ni)b.appendChild(ni);b.appendChild(document.createTextNode(t(NAV[id])));});
 }
@@ -510,8 +573,8 @@ function applyBg(){
   }
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-22';
-var APP_NOTE='Background colour now re-themes the whole app (cards, borders, text) to match.';
+var APP_VER='2026.07.04-23';
+var APP_NOTE='ترجمة عربية أوسع بأسماء أيام كاملة / Fuller Arabic translation with full day names.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1641,8 +1704,9 @@ loadST();
 setAppIcon();
 applyBg();
 document.getElementById('yr').textContent=new Date().getFullYear();
-render();
 applyLang();
+startAutoTranslate();
+render();
 setupGridSel();
 setupSheetSwipe();
 setupCalSwipe();
