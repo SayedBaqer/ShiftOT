@@ -409,7 +409,7 @@ var SH={
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-13';
+var APP_VER='2026.07.04-14';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -888,9 +888,12 @@ function openMulti(){
   var mt=document.getElementById('mPhTog');if(mt)mt.classList.remove('on');
   var pb=document.getElementById('mPasteBtn');
   if(pb){
-    var n=(ST.clip&&ST.clip.length)||0;
-    if(n){var sd=pd(Object.keys(mSel).sort()[0]);pb.innerHTML='&#128204; Paste '+n+'d from '+sd.toLocaleDateString('en-GB',{day:'numeric',month:'short'});pb.style.opacity='1';}
-    else{pb.innerHTML='&#128204; Paste';pb.style.opacity='.45';}
+    var n=(ST.clip&&ST.clip.length)||0;var ks=Object.keys(mSel).sort();
+    if(n){
+      if(ks.length>1)pb.innerHTML='&#128204; Paste — fill '+ks.length+' days (repeat)';
+      else{var sd=pd(ks[0]);pb.innerHTML='&#128204; Paste '+n+'d from '+sd.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+      pb.style.opacity='1';
+    } else {pb.innerHTML='&#128204; Paste';pb.style.opacity='.45';}
   }
   ovOpenTs=Date.now();
   document.getElementById('multiOv').classList.add('op');
@@ -902,28 +905,38 @@ function copyMulti(){
   savST();closeOv('multiOv');clearSel();
   toast('Copied ✓',1500);
 }
+function applyClipEntry(ds,c){
+  var base=getBase(ds);
+  ST.ov[ds]=c.sk;
+  var baseOff=!SH[base]||!SH[base].s;var newDuty=SH[c.sk]&&SH[c.sk].s;
+  if(baseOff&&newDuty)ST.manualOT[ds]=true;else delete ST.manualOT[ds];
+  if(c.ph)ST.ph[ds]=true;else delete ST.ph[ds];
+  if(c.hl)ST.hl[ds]=c.hl;else delete ST.hl[ds];
+  if(c.oth!=null)ST.otHours[ds]=c.oth;else delete ST.otHours[ds];
+  if(c.rate!=null)ST.otRateDay[ds]=c.rate;else delete ST.otRateDay[ds];
+}
+// Lay the whole copied block once, forward from anchor day.
 function pasteClipFrom(anchorDs){
   var start=pd(anchorDs);
-  for(var i=0;i<ST.clip.length;i++){
-    var ds=dk(aD(start,i));
-    var c=ST.clip[i];
-    var base=getBase(ds);
-    ST.ov[ds]=c.sk;
-    var baseOff=!SH[base]||!SH[base].s;var newDuty=SH[c.sk]&&SH[c.sk].s;
-    if(baseOff&&newDuty)ST.manualOT[ds]=true;else delete ST.manualOT[ds];
-    if(c.ph)ST.ph[ds]=true;else delete ST.ph[ds];
-    if(c.hl)ST.hl[ds]=c.hl;else delete ST.hl[ds];
-    if(c.oth!=null)ST.otHours[ds]=c.oth;else delete ST.otHours[ds];
-    if(c.rate!=null)ST.otRateDay[ds]=c.rate;else delete ST.otRateDay[ds];
-  }
+  for(var i=0;i<ST.clip.length;i++)applyClipEntry(dk(aD(start,i)),ST.clip[i]);
+}
+// Fill an explicit list of days, repeating the copied pattern to cover them all.
+function pasteClipFill(dsList){
+  dsList.forEach(function(ds,i){applyClipEntry(ds,ST.clip[i%ST.clip.length]);});
 }
 function pasteMulti(){
   if(!ST.clip||!ST.clip.length){toast('Nothing copied yet — Copy a schedule first');return;}
   var ks=Object.keys(mSel).sort();
   if(!ks.length){return;}
-  pasteClipFrom(ks[0]);
-  savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
-  toast('Pasted '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from '+ks[0]);
+  if(ks.length>1){
+    pasteClipFill(ks);
+    savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
+    toast('Pasted '+ks.length+' days (pattern repeated)');
+  } else {
+    pasteClipFrom(ks[0]);
+    savST();clearSel();render();closeOv('multiOv');if(curTab==='ot')refreshOT();
+    toast('Pasted '+ST.clip.length+' day'+(ST.clip.length!==1?'s':'')+' from '+ks[0]);
+  }
 }
 function pasteFromDay(){
   if(!editDs||!ST.clip||!ST.clip.length){toast('Nothing copied yet — Copy a schedule first');return;}
