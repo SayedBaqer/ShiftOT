@@ -494,15 +494,24 @@ function applyLang(){
   var NAV={nCal:'Calendar',nOT:'Overtime',nSet:'Settings'};
   Object.keys(NAV).forEach(function(id){var b=document.getElementById(id);if(!b)return;var ni=b.querySelector('.ni');b.innerHTML='';if(ni)b.appendChild(ni);b.appendChild(document.createTextNode(t(NAV[id])));});
 }
-// ── BACKGROUND COLOUR ────────────────────────────────────────────────────────
+// ── THEME (background colour re-themes the whole app) ────────────────────────
+function hexToRgb(h){h=toHex(h).replace('#','');return{r:parseInt(h.substr(0,2),16),g:parseInt(h.substr(2,2),16),b:parseInt(h.substr(4,2),16)};}
+function shade(hex,amt){var c=hexToRgb(hex);function ch(v){return Math.max(0,Math.min(255,Math.round(amt>=0?v+(255-v)*amt:v*(1+amt))));}return 'rgb('+ch(c.r)+','+ch(c.g)+','+ch(c.b)+')';}
 function applyBg(){
-  var c=ST.bgColor&&/^#|rgb/.test(ST.bgColor)?ST.bgColor:'#0A0A12';
-  document.documentElement.style.setProperty('--bg',c);
-  document.body.style.background=c;
+  var el=document.documentElement.style;
+  function set(bg,s1,s2,bd,tx,mu){el.setProperty('--bg',bg);el.setProperty('--s1',s1);el.setProperty('--s2',s2);el.setProperty('--bd',bd);el.setProperty('--tx',tx);el.setProperty('--mu',mu);document.body.style.background=bg;var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',toHex(bg));}
+  if(!ST.bgColor){set('#0A0A12','#12121E','#1A1A28','#222232','#E8E8F8','#5A5A80');return;}
+  var base=toHex(ST.bgColor);var c=hexToRgb(base);
+  var lum=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;
+  if(lum>0.55){ // light background → dark text, slightly darker surfaces
+    set(base,shade(base,-0.05),shade(base,-0.10),shade(base,-0.20),'#14141F',shade(base,-0.45));
+  } else { // dark background → light text, slightly lighter surfaces
+    set(base,shade(base,0.07),shade(base,0.13),shade(base,0.20),'#EEEEF8',shade(base,0.55));
+  }
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-21';
-var APP_NOTE='New name “Shift Calendar & OT” and a fresh app icon.';
+var APP_VER='2026.07.04-22';
+var APP_NOTE='Background colour now re-themes the whole app (cards, borders, text) to match.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
