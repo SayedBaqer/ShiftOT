@@ -140,7 +140,7 @@ input[type=time],input[type=number]{width:auto;}
         <div class="sr2" style="cursor:default">
           <div><div class="sl2">Background colour</div><div class="ss2">App background behind everything</div></div>
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="color" id="bgInp" value="#0A0A12" onchange="savBg()" style="width:46px;height:38px;padding:0;border:1px solid var(--bd);background:none;border-radius:8px"/>
+            <div id="bgSwatch" onclick="openBgPicker()" style="width:46px;height:38px;border-radius:8px;background:#0A0A12;border:1px solid var(--bd);cursor:pointer"></div>
             <button class="ib" onclick="resetBg()" title="Reset">&#8635;</button>
           </div>
         </div>
@@ -427,6 +427,23 @@ input[type=time],input[type=number]{width:auto;}
 </div>
 </div>
 
+<!-- COLOUR PICKER -->
+<div class="ov" id="colorOv">
+<div class="sh">
+  <div class="shh"></div>
+  <div class="shTop"><div class="sht" id="colorT">Choose colour</div></div>
+  <div class="swipeHint">Swipe left or right to cancel</div>
+  <div class="shs">
+    <div id="colorGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px"></div>
+    <div style="margin-top:13px;margin-bottom:5px;font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.07em;text-transform:uppercase">Custom colour</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="color" id="colorCustom" style="width:58px;height:40px;padding:0;border:1px solid var(--bd);border-radius:8px;background:none"/>
+      <button class="btn bp" style="margin-top:0;flex:1" onclick="applyColorCustom()">Use this</button>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- PAT DAY PICKER -->
 <div class="ov" id="pdOv">
 <div class="sh">
@@ -462,6 +479,9 @@ Object.keys(SBG).forEach(function(k){DEF_SBGv[k]=SBG[k];});
 function darkenHex(hex){hex=String(hex).replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);var f=0.13;return 'rgb('+Math.round(r*f)+','+Math.round(g*f)+','+Math.round(b*f)+')';}
 function toHex(c){if(!c)return '#4B5563';c=String(c).trim();if(c[0]==='#'){if(c.length===4)return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return c.slice(0,7);}var m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(m)return '#'+[m[1],m[2],m[3]].map(function(x){return ('0'+parseInt(x,10).toString(16)).slice(-2);}).join('');return '#4B5563';}
 function mixCol(c1,c2,t){var a=hexToRgb(c1),b=hexToRgb(c2);return 'rgb('+Math.round(a.r*t+b.r*(1-t))+','+Math.round(a.g*t+b.g*(1-t))+','+Math.round(a.b*t+b.b*(1-t))+')';}
+function lumOf(hex){var c=hexToRgb(toHex(hex));return (0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;}
+// Return a version of `col` that stays visible on background `bg`.
+function accentOn(col,bg){var bl=lumOf(bg),cl=lumOf(col);if(bl>0.5)return cl>0.5?mixCol(toHex(col),'#000000',0.5):toHex(col);return cl<0.42?mixCol(toHex(col),'#FFFFFF',0.55):toHex(col);}
 // Cell tints derive from the shift colour blended into the current background so they always match the theme.
 function recomputeSBG(){var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#0A0A12';Object.keys(SC).forEach(function(k){SBG[k]=mixCol(SC[k],bg,0.16);});}
 function applyShiftCustom(){
@@ -527,7 +547,9 @@ var AR={
   'SUMMARY':'الملخص','OT HRS':'ساعات إضافية','PH HRS':'ساعات عطلة','TOTAL PAY':'إجمالي الأجر','OT+PH':'إضافي+عطلة',
   '📋 Copy schedule':'📋 نسخ الجدول','✕ Clear overrides for selected':'✕ مسح تعديلات المحدد',
   'Hours (Off-Duty):':'الساعات (خارج الدوام):','Longer shift':'وردية أطول','Shift swap (same hours) — no auto OT':'تبديل وردية (نفس الساعات) — لا إضافي تلقائي',
-  'Reset ✓':'تم الاسترجاع ✓','Saved ✓':'تم الحفظ ✓','Pattern saved ✓':'تم حفظ النمط ✓','Period saved ✓':'تم حفظ الفترة ✓','Appearance reset ✓':'تم استرجاع المظهر ✓'
+  'Reset ✓':'تم الاسترجاع ✓','Saved ✓':'تم الحفظ ✓','Pattern saved ✓':'تم حفظ النمط ✓','Period saved ✓':'تم حفظ الفترة ✓','Appearance reset ✓':'تم استرجاع المظهر ✓',
+  'Choose colour':'اختر لوناً','Custom colour':'لون مخصص','Choose icon':'اختر أيقونة','Use this':'استخدم هذه',
+  'Currency':'العملة','+ Add Temporary Period Pattern':'+ إضافة نمط فترة مؤقتة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 // Translate known leaf labels under root (reversible; only touches dictionary strings).
@@ -538,12 +560,15 @@ function walkTranslate(root){
   for(var i=0;i<list.length;i++){
     var el=list[i],tg=el.tagName;
     if(tg==='SCRIPT'||tg==='STYLE'||tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||tg==='OPTION')continue;
-    if(el.children&&el.children.length>0)continue;
-    var raw=el.getAttribute('data-en');
-    if(raw==null){var cur=el.textContent.trim();if(!AR[cur])continue;raw=el.textContent;el.setAttribute('data-en',raw);}
-    var key=raw.trim();
-    var target=(LANG==='ar'&&AR[key])?AR[key]:raw;
-    if(el.textContent!==target)el.textContent=target;
+    for(var j=0;j<el.childNodes.length;j++){
+      var n=el.childNodes[j];
+      if(n.nodeType!==3)continue;
+      var raw=n.__en;
+      if(raw==null){var cur=n.nodeValue.trim();if(!cur||!AR[cur])continue;raw=n.nodeValue;n.__en=raw;}
+      var key=raw.trim();
+      var target=(LANG==='ar'&&AR[key])?raw.replace(key,AR[key]):raw;
+      if(n.nodeValue!==target)n.nodeValue=target;
+    }
   }
 }
 var _mo;
@@ -582,8 +607,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-24';
-var APP_NOTE='خلايا الأيام تتبع لون الخلفية، ترجمة أوسع، "أول ليل" / Cells follow background colour, more Arabic.';
+var APP_VER='2026.07.05-25';
+var APP_NOTE='ألوان جاهزة للاختيار، نص واضح دائماً، ترجمة أوسع / Colour palette, always-readable text, more Arabic.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -785,7 +810,8 @@ function mkCell(date,other,tds){
   if(hasNote)cell.style.color=col;
   if(isTp)cell.style.outline='1px solid rgba(251,191,36,.25)';
   if(!other){cell.dataset.ds=ds;cell.onclick=(function(d){return function(){openDay(d);};})(ds);}
-  var dn=document.createElement('div');dn.className='dn';dn.style.color=col;dn.textContent=date.getDate();
+  var dnCol=accentOn(col,hl?'#0A0A12':bg);
+  var dn=document.createElement('div');dn.className='dn';dn.style.color=dnCol;dn.textContent=date.getDate();
   var de=document.createElement('div');de.className='de';de.textContent=sh.e;
   cell.appendChild(dn);cell.appendChild(de);
   if(isPHday&&!other){var pb=document.createElement('div');pb.style.cssText='position:absolute;bottom:2px;left:2px;font-size:7px;color:#06B6D4;font-weight:700';pb.textContent='PH';cell.appendChild(pb);}
@@ -796,7 +822,8 @@ function renderStrip(tds){
   var sk=getShift(tds);var sh=SH[sk]||SH.off;var col=SC[sk]||'#4B5563';var bg=SBG[sk]||'#111118';
   var tmr=dk(aD(pd(tds),1));var tmrSk=getShift(tmr);var tmrSh=SH[tmrSk]||SH.off;var tmrCol=SC[tmrSk]||'#4B5563';
   var nt=ST.nt[tds];var ph=!!ST.ph[tds];var ot=isOT(tds);
-  document.getElementById('todayStrip').innerHTML='<div class="ts" style="background:'+bg+';border:1px solid '+col+'22" onclick="openDay(\''+tds+'\')"><div style="font-size:30px">'+sh.e+'</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:800;color:'+col+'">'+sh.n+(ot?' <span style="font-size:11px;color:#FBBF24">OT</span>':'')+(ph?' <span style="font-size:11px;color:#06B6D4">PH</span>':'')+'</div><div style="font-size:12px;opacity:.7;margin-top:1px">'+(sh.s?sh.s+' – '+sh.f:'Rest day')+'</div>'+(nt?'<div style="font-size:11px;color:#FBBF24;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&#128203; '+nt+'</div>':'')+'</div><div style="text-align:right;flex-shrink:0"><div style="font-size:10px;color:var(--mu);margin-bottom:2px">Tomorrow</div><div style="font-size:18px">'+tmrSh.e+'</div><div style="font-size:10px;color:'+tmrCol+'">'+tmrSh.n+'</div></div></div>';
+  var scol=accentOn(col,bg);var tmrColA=accentOn(tmrCol,bg);
+  document.getElementById('todayStrip').innerHTML='<div class="ts" style="background:'+bg+';border:1px solid '+col+'22" onclick="openDay(\''+tds+'\')"><div style="font-size:30px">'+sh.e+'</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:800;color:'+scol+'">'+sh.n+(ot?' <span style="font-size:11px;color:#FBBF24">OT</span>':'')+(ph?' <span style="font-size:11px;color:#06B6D4">PH</span>':'')+'</div><div style="font-size:12px;opacity:.7;margin-top:1px">'+(sh.s?sh.s+' – '+sh.f:'Rest day')+'</div>'+(nt?'<div style="font-size:11px;color:#FBBF24;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&#128203; '+nt+'</div>':'')+'</div><div style="text-align:right;flex-shrink:0"><div style="font-size:10px;color:var(--mu);margin-bottom:2px">Tomorrow</div><div style="font-size:18px">'+tmrSh.e+'</div><div style="font-size:10px;color:'+tmrColA+'">'+tmrSh.n+'</div></div></div>';
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -1353,14 +1380,15 @@ function loadSettings(){
   var pR=document.getElementById('phRateInp');if(pR)pR.value=ST.phRate!=null?ST.phRate:1.5;
   var lt=document.getElementById('linkTog');if(lt)lt.classList.toggle('on',ST.linkCalOT!==false);
   var lg=document.getElementById('langSel');if(lg)lg.value=ST.lang||'en';
-  var bg=document.getElementById('bgInp');if(bg)bg.value=toHex(ST.bgColor||'#0A0A12');
+  var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#0A0A12';
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
 }
 function savLang(){ST.lang=document.getElementById('langSel').value;savST();applyLang();render();renderGuide();renderShiftAppearance();renderOTCfg();toast('Saved ✓');}
-function savBg(){ST.bgColor=document.getElementById('bgInp').value;savST();applyBg();render();renderShiftAppearance();toast('Saved ✓');}
-function resetBg(){ST.bgColor='';var el=document.getElementById('bgInp');if(el)el.value='#0A0A12';savST();applyBg();render();renderShiftAppearance();toast('Reset ✓');}
+function openBgPicker(){openColorPicker(ST.bgColor||'#0A0A12',setBgColor);}
+function setBgColor(c){ST.bgColor=c;savST();applyBg();render();renderShiftAppearance();var sw=document.getElementById('bgSwatch');if(sw)sw.style.background=c;toast('Saved ✓');}
+function resetBg(){ST.bgColor='';var sw=document.getElementById('bgSwatch');if(sw)sw.style.background='#0A0A12';savST();applyBg();render();renderShiftAppearance();toast('Reset ✓');}
 function renderGuide(){
   var c=document.getElementById('guideSec');if(!c)return;
   var en=[
@@ -1419,6 +1447,29 @@ function openEmojiPicker(k){
 function pickEmoji(e){if(emojiKey)setShiftEmoji(emojiKey,e);closeOv('emojiOv');}
 function applyEmojiCustom(){var v=document.getElementById('emojiCustom').value.trim();if(v&&emojiKey)setShiftEmoji(emojiKey,v);closeOv('emojiOv');}
 function resetEmojiForShift(){if(emojiKey)setShiftEmoji(emojiKey,'');closeOv('emojiOv');}
+var PALETTE=[
+  {n:'وردي غامق',c:'#DB2777'},{n:'أحمر',c:'#DC2626'},{n:'برتقالي',c:'#EA580C'},{n:'أصفر غامق',c:'#CA8A04'},{n:'كهرماني',c:'#F59E0B'},
+  {n:'بيج',c:'#C9B58C'},{n:'أخضر',c:'#059669'},{n:'تركواز',c:'#0D9488'},{n:'أزرق فاتح',c:'#38BDF8'},{n:'أزرق',c:'#3B82F6'},
+  {n:'أزرق غامق',c:'#1E40AF'},{n:'بنفسجي',c:'#7C3AED'},{n:'نيلي',c:'#818CF8'},{n:'رمادي',c:'#64748B'},{n:'فحمي',c:'#334155'}
+];
+var colorCb=null;
+function openColorPicker(cur,cb){
+  colorCb=cb;
+  document.getElementById('colorCustom').value=toHex(cur||'#818CF8');
+  var g=document.getElementById('colorGrid');g.innerHTML='';
+  PALETTE.forEach(function(p){
+    var sel=toHex(cur)===toHex(p.c);
+    var b=document.createElement('div');
+    b.style.cssText='height:48px;border-radius:10px;background:'+p.c+';cursor:pointer;border:3px solid '+(sel?'#fff':'transparent')+';box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)';
+    b.title=p.n;
+    b.onclick=(function(col){return function(){pickColor(col);};})(p.c);
+    g.appendChild(b);
+  });
+  ovOpenTs=Date.now();
+  document.getElementById('colorOv').classList.add('op');
+}
+function pickColor(c){if(colorCb)colorCb(c);closeOv('colorOv');}
+function applyColorCustom(){var v=document.getElementById('colorCustom').value;if(colorCb)colorCb(v);closeOv('colorOv');}
 function renderShiftAppearance(){
   var c=document.getElementById('shAppSec');if(!c)return;c.innerHTML='';
   Object.keys(SH).forEach(function(k){
@@ -1428,11 +1479,11 @@ function renderShiftAppearance(){
     var eBtn=document.createElement('div');eBtn.textContent=s.e;
     eBtn.style.cssText='width:48px;text-align:center;font-size:22px;padding:7px 4px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;flex-shrink:0;cursor:pointer';
     eBtn.onclick=(function(key){return function(){openEmojiPicker(key);};})(k);
-    var nm=document.createElement('div');nm.style.cssText='flex:1;font-size:14px;font-weight:700;color:'+col;nm.textContent=s.n+(s.s?' · '+s.s+'–'+s.f:'');
-    var cIn=document.createElement('input');cIn.type='color';cIn.value=toHex(col);
-    cIn.style.cssText='width:46px;height:38px;padding:0;border:1px solid var(--bd);background:none;border-radius:8px;flex-shrink:0';
-    cIn.onchange=(function(key){return function(){setShiftColor(key,this.value);};})(k);
-    row.appendChild(eBtn);row.appendChild(nm);row.appendChild(cIn);
+    var nm=document.createElement('div');nm.style.cssText='flex:1;font-size:14px;font-weight:700;color:'+accentOn(col,bg);nm.textContent=s.n+(s.s?' · '+s.s+'–'+s.f:'');
+    var cBtn=document.createElement('div');
+    cBtn.style.cssText='width:46px;height:38px;border-radius:8px;background:'+col+';border:1px solid var(--bd);flex-shrink:0;cursor:pointer';
+    cBtn.onclick=(function(key,cur){return function(){openColorPicker(cur,function(nc){setShiftColor(key,nc);});};})(k,col);
+    row.appendChild(eBtn);row.appendChild(nm);row.appendChild(cBtn);
     c.appendChild(row);
   });
 }
