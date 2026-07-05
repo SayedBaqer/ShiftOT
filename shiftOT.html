@@ -633,8 +633,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-28';
-var APP_NOTE='ألوان الشارات تتكيّف مع الخلفية الفاتحة / Accent colours adapt to light backgrounds.';
+var APP_VER='2026.07.05-29';
+var APP_NOTE='تصميم أوضح لملخّص الإضافي وترجمة كاملة / Clearer Overtime summary design, full Arabic.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1630,21 +1630,14 @@ function refreshOT(){
     var html='';
     // Summary
     html+='<div class="otsum">';
-    html+='<div style="font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.06em;margin-bottom:8px">SUMMARY</div>';
-    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">';
-    html+='<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);border-radius:10px;padding:9px;text-align:center">';
-    html+='<div style="font-size:9px;color:var(--amber);margin-bottom:2px;font-weight:700">OT HRS</div>';
-    html+='<div style="font-size:24px;font-weight:800;color:var(--amber)">'+hu(res.otH.toFixed(1))+'</div>';
-    html+='<div style="font-size:10px;color:var(--mu)">'+curr+res.otPay.toFixed(3)+'</div></div>';
-    html+='<div style="background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.4);border-radius:10px;padding:9px;text-align:center">';
-    html+='<div style="font-size:9px;color:var(--cyan);margin-bottom:2px;font-weight:700">PH HRS</div>';
-    html+='<div style="font-size:24px;font-weight:800;color:var(--cyan)">'+hu(res.phH.toFixed(1))+'</div>';
-    html+='<div style="font-size:10px;color:var(--mu)">'+curr+res.phPay.toFixed(3)+'</div></div>';
-    html+='<div style="background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.4);border-radius:10px;padding:9px;text-align:center">';
-    html+='<div style="font-size:9px;color:var(--indigo);margin-bottom:2px;font-weight:700">TOTAL PAY</div>';
-    html+='<div style="font-size:18px;font-weight:800;color:var(--indigo)">'+curr+res.totalPay.toFixed(3)+'</div>';
-    html+='<div style="font-size:10px;color:var(--mu)">OT+PH</div></div></div>';
-    html+='<div style="font-size:11px;color:var(--mu)">'+t('Worked:')+' <b style="color:var(--tx)">'+hu(res.totalH.toFixed(0))+'</b>';
+    html+='<div style="font-size:12px;font-weight:800;color:var(--tx);letter-spacing:.04em;margin-bottom:9px">'+t('SUMMARY')+'</div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:11px">';
+    function tile(brd,lbl,val,sub){return '<div style="background:var(--s2);border-radius:12px;border-top:3px solid '+brd+';padding:11px 6px 9px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.18)"><div style="font-size:9px;color:var(--mu);font-weight:700;margin-bottom:4px">'+lbl+'</div><div style="font-size:22px;font-weight:800;color:'+brd+';line-height:1.05">'+val+'</div><div style="font-size:10px;color:var(--mu);margin-top:3px">'+sub+'</div></div>';}
+    html+=tile('var(--amber)',t('OT HRS'),hu(res.otH.toFixed(1)),curr+res.otPay.toFixed(3));
+    html+=tile('var(--cyan)',t('PH HRS'),hu(res.phH.toFixed(1)),curr+res.phPay.toFixed(3));
+    html+=tile('var(--indigo)',t('TOTAL PAY'),curr+res.totalPay.toFixed(3),t('OT+PH'));
+    html+='</div>';
+    html+='<div style="font-size:11px;color:var(--mu);line-height:1.7">'+t('Worked:')+' <b style="color:var(--tx)">'+hu(res.totalH.toFixed(0))+'</b>';
     html+=' &middot; '+t('Days:')+' <b style="color:var(--tx)">'+allWork.length+'</b>';
     html+=' &middot; '+t('OT:')+' <b style="color:var(--amber)">'+dLbl(otDays.length)+' / '+hu(res.otH.toFixed(1))+'</b>';
     html+=' &middot; '+t('PH:')+' <b style="color:var(--cyan)">'+phDays.length+'</b></div></div>';
