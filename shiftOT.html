@@ -14,6 +14,7 @@
 :root{
   --bg:#0A0A12;--s1:#12121E;--s2:#1A1A28;--bd:#222232;
   --tx:#E8E8F8;--mu:#5A5A80;
+  --amber:#FBBF24;--cyan:#06B6D4;--green:#10B981;--indigo:#818CF8;
   --morning:#F59E0B;--morning-bg:#1E1400;
   --lmorning:#FBBF24;--lmorning-bg:#241A00;
   --afternoon:#10B981;--afternoon-bg:#001810;
@@ -33,7 +34,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;}
 #setPage,#otPage{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
 #nav{flex-shrink:0;display:flex;background:var(--s1);border-top:1px solid var(--bd);padding-bottom:max(env(safe-area-inset-bottom),8px);}
 .ntb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 2px;background:none;border:none;color:var(--mu);font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;}
-.ntb.on{color:#818CF8;}
+.ntb.on{color:var(--indigo);}
 .ntb .ni{font-size:20px;}
 .hr{display:flex;align-items:center;justify-content:space-between;}
 .mnv{display:flex;align-items:center;gap:10px;}
@@ -49,7 +50,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;}
 .cd.xo{opacity:.2;pointer-events:none;}
 .cd.tod .dn{background:var(--tx);color:var(--bg);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;}
 .cd.hn{border-color:currentColor;}
-.cd.ot::before{content:'$';position:absolute;top:2px;right:3px;font-size:7px;font-weight:700;color:#FBBF24;}
+.cd.ot::before{content:'$';position:absolute;top:2px;right:3px;font-size:7px;font-weight:700;color:var(--amber);}
 .cd.ph-day{box-shadow:inset 0 0 0 2px rgba(6,182,212,.5);}
 .cd.hy{background:rgba(251,191,36,.18)!important;}
 .cd.hr2{background:rgba(239,68,68,.18)!important;}
@@ -614,20 +615,26 @@ function hexToRgb(h){h=toHex(h).replace('#','');return{r:parseInt(h.substr(0,2),
 function shade(hex,amt){var c=hexToRgb(hex);function ch(v){return Math.max(0,Math.min(255,Math.round(amt>=0?v+(255-v)*amt:v*(1+amt))));}return 'rgb('+ch(c.r)+','+ch(c.g)+','+ch(c.b)+')';}
 function applyBg(){
   var el=document.documentElement.style;
+  function setAccents(light){
+    el.setProperty('--amber',light?'#B45309':'#FBBF24');
+    el.setProperty('--cyan',light?'#0E7490':'#06B6D4');
+    el.setProperty('--green',light?'#047857':'#10B981');
+    el.setProperty('--indigo',light?'#4F46E5':'#818CF8');
+  }
   function set(bg,s1,s2,bd,tx,mu){el.setProperty('--bg',bg);el.setProperty('--s1',s1);el.setProperty('--s2',s2);el.setProperty('--bd',bd);el.setProperty('--tx',tx);el.setProperty('--mu',mu);document.body.style.background=bg;var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',toHex(bg));}
-  if(!ST.bgColor){set('#0A0A12','#12121E','#1A1A28','#222232','#E8E8F8','#5A5A80');recomputeSBG();return;}
+  if(!ST.bgColor){set('#0A0A12','#12121E','#1A1A28','#222232','#E8E8F8','#5A5A80');setAccents(false);recomputeSBG();return;}
   var base=toHex(ST.bgColor);var c=hexToRgb(base);
   var lum=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;
   if(lum>0.55){ // light background → dark text, slightly darker surfaces
-    set(base,shade(base,-0.05),shade(base,-0.10),shade(base,-0.20),'#14141F',shade(base,-0.45));
+    set(base,shade(base,-0.05),shade(base,-0.10),shade(base,-0.20),'#14141F',shade(base,-0.45));setAccents(true);
   } else { // dark background → light text, slightly lighter surfaces
-    set(base,shade(base,0.07),shade(base,0.13),shade(base,0.20),'#EEEEF8',shade(base,0.55));
+    set(base,shade(base,0.07),shade(base,0.13),shade(base,0.20),'#EEEEF8',shade(base,0.55));setAccents(false);
   }
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-27';
-var APP_NOTE='تباين ألوان محسّن — لا نص خفي / Stronger colour contrast so no text is invisible.';
+var APP_VER='2026.07.05-28';
+var APP_NOTE='ألوان الشارات تتكيّف مع الخلفية الفاتحة / Accent colours adapt to light backgrounds.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -833,7 +840,7 @@ function mkCell(date,other,tds){
   var dn=document.createElement('div');dn.className='dn';dn.style.color=dnCol;dn.textContent=date.getDate();
   var de=document.createElement('div');de.className='de';de.textContent=sh.e;
   cell.appendChild(dn);cell.appendChild(de);
-  if(isPHday&&!other){var pb=document.createElement('div');pb.style.cssText='position:absolute;bottom:2px;left:2px;font-size:7px;color:#06B6D4;font-weight:700';pb.textContent='PH';cell.appendChild(pb);}
+  if(isPHday&&!other){var pb=document.createElement('div');pb.style.cssText='position:absolute;bottom:2px;left:2px;font-size:7px;color:var(--cyan);font-weight:700';pb.textContent='PH';cell.appendChild(pb);}
   return cell;
 }
 
@@ -842,7 +849,7 @@ function renderStrip(tds){
   var tmr=dk(aD(pd(tds),1));var tmrSk=getShift(tmr);var tmrSh=SH[tmrSk]||SH.off;var tmrCol=SC[tmrSk]||'#4B5563';
   var nt=ST.nt[tds];var ph=!!ST.ph[tds];var ot=isOT(tds);
   var scol=accentOn(col,bg);var tmrColA=accentOn(tmrCol,bg);
-  document.getElementById('todayStrip').innerHTML='<div class="ts" style="background:'+bg+';border:1px solid '+col+'22" onclick="openDay(\''+tds+'\')"><div style="font-size:30px">'+sh.e+'</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:800;color:'+scol+'">'+sh.n+(ot?' <span style="font-size:11px;color:#FBBF24">OT</span>':'')+(ph?' <span style="font-size:11px;color:#06B6D4">PH</span>':'')+'</div><div style="font-size:12px;opacity:.7;margin-top:1px">'+(sh.s?sh.s+' – '+sh.f:'Rest day')+'</div>'+(nt?'<div style="font-size:11px;color:#FBBF24;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&#128203; '+nt+'</div>':'')+'</div><div style="text-align:right;flex-shrink:0"><div style="font-size:10px;color:var(--mu);margin-bottom:2px">Tomorrow</div><div style="font-size:18px">'+tmrSh.e+'</div><div style="font-size:10px;color:'+tmrColA+'">'+tmrSh.n+'</div></div></div>';
+  document.getElementById('todayStrip').innerHTML='<div class="ts" style="background:'+bg+';border:1px solid '+col+'22" onclick="openDay(\''+tds+'\')"><div style="font-size:30px">'+sh.e+'</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:800;color:'+scol+'">'+sh.n+(ot?' <span style="font-size:11px;color:var(--amber)">OT</span>':'')+(ph?' <span style="font-size:11px;color:var(--cyan)">PH</span>':'')+'</div><div style="font-size:12px;opacity:.7;margin-top:1px">'+(sh.s?sh.s+' – '+sh.f:'Rest day')+'</div>'+(nt?'<div style="font-size:11px;color:var(--amber);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&#128203; '+nt+'</div>':'')+'</div><div style="text-align:right;flex-shrink:0"><div style="font-size:10px;color:var(--mu);margin-bottom:2px">Tomorrow</div><div style="font-size:18px">'+tmrSh.e+'</div><div style="font-size:10px;color:'+tmrColA+'">'+tmrSh.n+'</div></div></div>';
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -1325,7 +1332,7 @@ function renderImportPreview(){
   if(!impPairs.length){el.innerHTML='<div style="color:#EF4444;font-size:12px">No days parsed. Check your paste.</div>';return;}
   var uniq=[];impPairs.forEach(function(p){var u=p.code.toUpperCase();if(uniq.indexOf(u)<0)uniq.push(u);});
   var h='<div style="font-size:12px;color:var(--mu);margin-bottom:8px">Parsed <b style="color:var(--tx)">'+impPairs.length+'</b> days &middot; '+impPairs[0].ds+' &rarr; '+impPairs[impPairs.length-1].ds+'</div>';
-  h+='<div style="font-size:11px;font-weight:700;color:#FBBF24;margin-bottom:6px">Map each code to a shift</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">Map each code to a shift</div>';
   uniq.forEach(function(c){
     var g=guessShift(c);
     h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="min-width:46px;font-weight:700;font-family:monospace;background:var(--s2);border-radius:6px;padding:7px 8px;text-align:center">'+c+'</div>';
@@ -1536,8 +1543,8 @@ function renderOTCfg(){
     else{nb.innerHTML=t('Normal day')+': <b style="color:var(--tx)">'+hu(s.h)+' — '+t('no OT pay')+'</b>';}
     wrap.appendChild(nb);
     var offRt=parseFloat(ST.offRate)||1.5;var phRt=parseFloat(ST.phRate)||1.5;
-    var ob=document.createElement('div');ob.style.cssText='font-size:12px;padding:7px 10px;background:var(--s2);border-radius:7px;margin-bottom:10px';ob.innerHTML=t('Off-Duty')+': <b style="color:#06B6D4">'+hu(s.h)+' × '+offRt+'</b> &middot; '+t('PH')+': <b style="color:#06B6D4">× '+phRt+'</b>';wrap.appendChild(ob);
-    var sl=document.createElement('div');sl.style.cssText='font-size:11px;color:#FBBF24;font-weight:600;margin-bottom:7px';sl.textContent=t('Normal-day OT segments (0 = no OT on normal days):');wrap.appendChild(sl);
+    var ob=document.createElement('div');ob.style.cssText='font-size:12px;padding:7px 10px;background:var(--s2);border-radius:7px;margin-bottom:10px';ob.innerHTML=t('Off-Duty')+': <b style="color:var(--cyan)">'+hu(s.h)+' × '+offRt+'</b> &middot; '+t('PH')+': <b style="color:var(--cyan)">× '+phRt+'</b>';wrap.appendChild(ob);
+    var sl=document.createElement('div');sl.style.cssText='font-size:11px;color:var(--amber);font-weight:600;margin-bottom:7px';sl.textContent=t('Normal-day OT segments (0 = no OT on normal days):');wrap.appendChild(sl);
     var cr=document.createElement('div');cr.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px';
     [0,1,2,3].forEach(function(n){
       var btn=document.createElement('button');btn.textContent=n===0?t('None'):String(n);
@@ -1582,8 +1589,8 @@ function renderOTCfg(){
         ST.otCfg[key].patOT=JSON.parse(JSON.stringify(ST.otCfgUser[key].patOT));
         savST();renderOTCfg();
       };})(sk,i);
-      var d1=document.createElement('div');d1.innerHTML='<div style="font-size:11px;color:#FBBF24;margin-bottom:3px">'+(LANG==='ar'?('مقطع '+(i+1)+' ساعات'):('Seg '+(i+1)+' Hours'))+'</div>';d1.appendChild(hInp);
-      var d2=document.createElement('div');d2.innerHTML='<div style="font-size:11px;color:#FBBF24;margin-bottom:3px">'+t('Rate')+'</div>';d2.appendChild(rSel);
+      var d1=document.createElement('div');d1.innerHTML='<div style="font-size:11px;color:var(--amber);margin-bottom:3px">'+(LANG==='ar'?('مقطع '+(i+1)+' ساعات'):('Seg '+(i+1)+' Hours'))+'</div>';d1.appendChild(hInp);
+      var d2=document.createElement('div');d2.innerHTML='<div style="font-size:11px;color:var(--amber);margin-bottom:3px">'+t('Rate')+'</div>';d2.appendChild(rSel);
       row.appendChild(d1);row.appendChild(d2);wrap.appendChild(row);
     });
     cont.appendChild(wrap);
@@ -1626,30 +1633,30 @@ function refreshOT(){
     html+='<div style="font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.06em;margin-bottom:8px">SUMMARY</div>';
     html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">';
     html+='<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);border-radius:10px;padding:9px;text-align:center">';
-    html+='<div style="font-size:9px;color:#FBBF24;margin-bottom:2px;font-weight:700">OT HRS</div>';
-    html+='<div style="font-size:24px;font-weight:800;color:#FBBF24">'+hu(res.otH.toFixed(1))+'</div>';
+    html+='<div style="font-size:9px;color:var(--amber);margin-bottom:2px;font-weight:700">OT HRS</div>';
+    html+='<div style="font-size:24px;font-weight:800;color:var(--amber)">'+hu(res.otH.toFixed(1))+'</div>';
     html+='<div style="font-size:10px;color:var(--mu)">'+curr+res.otPay.toFixed(3)+'</div></div>';
     html+='<div style="background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.4);border-radius:10px;padding:9px;text-align:center">';
-    html+='<div style="font-size:9px;color:#06B6D4;margin-bottom:2px;font-weight:700">PH HRS</div>';
-    html+='<div style="font-size:24px;font-weight:800;color:#06B6D4">'+hu(res.phH.toFixed(1))+'</div>';
+    html+='<div style="font-size:9px;color:var(--cyan);margin-bottom:2px;font-weight:700">PH HRS</div>';
+    html+='<div style="font-size:24px;font-weight:800;color:var(--cyan)">'+hu(res.phH.toFixed(1))+'</div>';
     html+='<div style="font-size:10px;color:var(--mu)">'+curr+res.phPay.toFixed(3)+'</div></div>';
     html+='<div style="background:rgba(129,140,248,.1);border:1px solid rgba(129,140,248,.4);border-radius:10px;padding:9px;text-align:center">';
-    html+='<div style="font-size:9px;color:#818CF8;margin-bottom:2px;font-weight:700">TOTAL PAY</div>';
-    html+='<div style="font-size:18px;font-weight:800;color:#818CF8">'+curr+res.totalPay.toFixed(3)+'</div>';
+    html+='<div style="font-size:9px;color:var(--indigo);margin-bottom:2px;font-weight:700">TOTAL PAY</div>';
+    html+='<div style="font-size:18px;font-weight:800;color:var(--indigo)">'+curr+res.totalPay.toFixed(3)+'</div>';
     html+='<div style="font-size:10px;color:var(--mu)">OT+PH</div></div></div>';
     html+='<div style="font-size:11px;color:var(--mu)">'+t('Worked:')+' <b style="color:var(--tx)">'+hu(res.totalH.toFixed(0))+'</b>';
     html+=' &middot; '+t('Days:')+' <b style="color:var(--tx)">'+allWork.length+'</b>';
-    html+=' &middot; '+t('OT:')+' <b style="color:#FBBF24">'+dLbl(otDays.length)+' / '+hu(res.otH.toFixed(1))+'</b>';
-    html+=' &middot; '+t('PH:')+' <b style="color:#06B6D4">'+phDays.length+'</b></div></div>';
+    html+=' &middot; '+t('OT:')+' <b style="color:var(--amber)">'+dLbl(otDays.length)+' / '+hu(res.otH.toFixed(1))+'</b>';
+    html+=' &middot; '+t('PH:')+' <b style="color:var(--cyan)">'+phDays.length+'</b></div></div>';
 
     if(otDays.length===0&&phDays.length===0){
       html+='<div style="background:var(--s2);border-radius:12px;padding:20px;text-align:center;margin:10px 0">';
       html+='<div style="font-size:26px;margin-bottom:6px">&#10003;</div>';
-      html+='<div style="font-size:14px;font-weight:700;color:#10B981">No Overtime or Public Holidays</div></div>';
+      html+='<div style="font-size:14px;font-weight:700;color:var(--green)">No Overtime or Public Holidays</div></div>';
     }
 
     if(otDays.length>0){
-      html+='<div style="font-size:11px;font-weight:700;color:#FBBF24;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 7px">Overtime Days</div>';
+      html+='<div style="font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin:14px 0 7px">Overtime Days</div>';
       html+='<div style="background:var(--s1);border-radius:12px;overflow:hidden;margin-bottom:12px">';
       otDays.forEach(function(d){
         var sh=SH[d.sk]||SH.off;var col=SC[d.sk]||'#4B5563';var date=pd(d.ds);
@@ -1661,11 +1668,11 @@ function refreshOT(){
         html+='<div style="font-size:20px">'+sh.e+'</div>';
         html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+accentOn(col,ST.bgColor||'#0A0A12')+'">'+fmtShort(date)+'</div>';
         html+='<div style="font-size:11px;color:var(--mu)">'+reason+'</div></div>';
-        html+='<div style="text-align:right"><div style="font-size:14px;font-weight:800;color:#FBBF24">'+hu(d.dayOtH.toFixed(1))+'</div>';
+        html+='<div style="text-align:right"><div style="font-size:14px;font-weight:800;color:var(--amber)">'+hu(d.dayOtH.toFixed(1))+'</div>';
         html+='<div style="font-size:11px;color:var(--mu)">'+curr+d.dayOtPay.toFixed(3)+'</div></div></div>';
         if(d.segs&&d.segs.length){
           html+='<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">';
-          d.segs.forEach(function(s){html+='<span style="background:rgba(251,191,36,.12);border-radius:4px;padding:2px 8px;font-size:10px;color:#FBBF24">'+hu(parseFloat(s.h).toFixed(1))+' ×'+s.r+'</span>';});
+          d.segs.forEach(function(s){html+='<span style="background:rgba(251,191,36,.12);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--amber)">'+hu(parseFloat(s.h).toFixed(1))+' ×'+s.r+'</span>';});
           html+='</div></div>';
         } else {html+='</div>';}
       });
@@ -1673,16 +1680,16 @@ function refreshOT(){
     }
 
     if(phDays.length>0){
-      html+='<div style="font-size:11px;font-weight:700;color:#06B6D4;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 7px">Public Holiday Days</div>';
+      html+='<div style="font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:.08em;text-transform:uppercase;margin:14px 0 7px">Public Holiday Days</div>';
       html+='<div style="background:var(--s1);border-radius:12px;overflow:hidden;margin-bottom:12px">';
       phDays.forEach(function(d){
         var sh=SH[d.sk]||SH.off;var col=SC[d.sk]||'#4B5563';var date=pd(d.ds);
         html+='<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--bd)">';
         html+='<div style="font-size:20px">'+sh.e+'</div>';
-        html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#06B6D4">'+fmtShort(date)+'</div>';
+        html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--cyan)">'+fmtShort(date)+'</div>';
         var phSegR=(d.segs&&d.segs[0])?d.segs[0].r:1.5;
         html+='<div style="font-size:11px;color:var(--mu)">'+(d.isPhOff?(t('Rest day PH')+' &middot; '+hu(8)+' × '+phSegR):sh.n+' &middot; '+hu(d.dayH)+' × '+phSegR)+'</div></div>';
-        html+='<div style="text-align:right"><div style="font-size:14px;font-weight:800;color:#06B6D4">'+curr+d.phPay.toFixed(3)+'</div>';
+        html+='<div style="text-align:right"><div style="font-size:14px;font-weight:800;color:var(--cyan)">'+curr+d.phPay.toFixed(3)+'</div>';
         html+='<div style="font-size:11px;color:var(--mu)">'+hu(d.dayH)+'</div></div></div>';
       });
       html+='</div>';
@@ -1705,8 +1712,8 @@ function refreshOT(){
       html+='<div style="font-size:18px">'+sh.e+'</div>';
       html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+col+'">'+sh.n+'</div>';
       html+='<div style="font-size:11px;color:var(--mu)">'+dLbl(data.count);
-      if(data.otH>0)html+=' &middot; <span style="color:#FBBF24">'+hu(data.otH.toFixed(1))+' '+t('OT')+'</span>';
-      if(data.phCount>0)html+=' &middot; <span style="color:#06B6D4">'+data.phCount+' '+t('PH')+'</span>';
+      if(data.otH>0)html+=' &middot; <span style="color:var(--amber)">'+hu(data.otH.toFixed(1))+' '+t('OT')+'</span>';
+      if(data.phCount>0)html+=' &middot; <span style="color:var(--cyan)">'+data.phCount+' '+t('PH')+'</span>';
       html+='</div></div><div style="text-align:right;min-width:50px"><div style="font-size:13px;font-weight:700;color:'+col+'">'+hu(data.h.toFixed(0))+'</div></div></div>';
     });
     html+='</div>';
