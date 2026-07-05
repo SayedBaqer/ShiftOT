@@ -102,7 +102,7 @@ input[type=time],input[type=number]{width:auto;}
 .pdi .pdn{font-size:10px;font-weight:700;}
 .pdi .pde{font-size:14px;}
 .tp{background:var(--s2);border-radius:11px;padding:11px 13px;margin-bottom:7px;border-left:3px solid #FBBF24;}
-.otsum{background:linear-gradient(135deg,#1E1400,#0D0A2A);border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:16px;margin-bottom:12px;}
+.otsum{background:var(--s1);border:1px solid rgba(251,191,36,.3);border-radius:14px;padding:16px;margin-bottom:12px;}
 </style>
 </head>
 <body>
@@ -461,9 +461,13 @@ Object.keys(SC).forEach(function(k){DEF_SCv[k]=SC[k];});
 Object.keys(SBG).forEach(function(k){DEF_SBGv[k]=SBG[k];});
 function darkenHex(hex){hex=String(hex).replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);var f=0.13;return 'rgb('+Math.round(r*f)+','+Math.round(g*f)+','+Math.round(b*f)+')';}
 function toHex(c){if(!c)return '#4B5563';c=String(c).trim();if(c[0]==='#'){if(c.length===4)return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return c.slice(0,7);}var m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(m)return '#'+[m[1],m[2],m[3]].map(function(x){return ('0'+parseInt(x,10).toString(16)).slice(-2);}).join('');return '#4B5563';}
+function mixCol(c1,c2,t){var a=hexToRgb(c1),b=hexToRgb(c2);return 'rgb('+Math.round(a.r*t+b.r*(1-t))+','+Math.round(a.g*t+b.g*(1-t))+','+Math.round(a.b*t+b.b*(1-t))+')';}
+// Cell tints derive from the shift colour blended into the current background so they always match the theme.
+function recomputeSBG(){var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#0A0A12';Object.keys(SC).forEach(function(k){SBG[k]=mixCol(SC[k],bg,0.16);});}
 function applyShiftCustom(){
-  Object.keys(SH).forEach(function(k){SH[k].e=DEF_SE[k];SC[k]=DEF_SCv[k];SBG[k]=DEF_SBGv[k];});
-  if(ST.shCustom)Object.keys(ST.shCustom).forEach(function(k){if(!SH[k])return;var c=ST.shCustom[k]||{};if(c.e)SH[k].e=c.e;if(c.c){SC[k]=c.c;SBG[k]=darkenHex(c.c);}});
+  Object.keys(SH).forEach(function(k){SH[k].e=DEF_SE[k];SC[k]=DEF_SCv[k];});
+  if(ST.shCustom)Object.keys(ST.shCustom).forEach(function(k){if(!SH[k])return;var c=ST.shCustom[k]||{};if(c.e)SH[k].e=c.e;if(c.c)SC[k]=c.c;});
+  recomputeSBG();
 }
 
 // ── LANGUAGE (English / Arabic) ──────────────────────────────────────────────
@@ -473,7 +477,7 @@ var LANG='en';
 var AR={
   weekdays:['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],
   months:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
-  shifts:{morning:'نهار',lmorning:'نهار طويل',afternoon:'مسائي',night:'ليل',lnight:'ليل طويل',off:'راحة',sick:'إجازة مرضية',leave:'إجازة سنوية',training:'تدريب'},
+  shifts:{morning:'نهار',lmorning:'نهار طويل',afternoon:'أول ليل',night:'ليل',lnight:'ليل طويل',off:'راحة',sick:'إجازة مرضية',leave:'إجازة سنوية',training:'تدريب'},
   Calendar:'التقويم',Overtime:'الإضافي',Settings:'الإعدادات',
   General:'عام','Cycle Start Date':'بداية الدورة','Currency & Rate':'العملة والأجر',
   'Shift Appearance':'مظهر الورديات','Overtime Config (per shift type)':'إعداد الإضافي (لكل وردية)',
@@ -513,6 +517,10 @@ var AR={
   'Calculate for date range':'احسب لنطاق تواريخ','Overtime Days':'أيام الوقت الإضافي','Public Holiday Days':'أيام العطلات الرسمية',
   'All Work Days by Shift':'كل أيام العمل حسب الوردية','No Overtime or Public Holidays':'لا يوجد وقت إضافي أو عطلات',
   '💰 Overtime Calculator':'💰 حاسبة الوقت الإضافي',
+  'No shift':'لا وردية','New Period Pattern':'نمط فترة جديد','Edit Period':'تعديل الفترة',
+  'Worked:':'العمل:','Days:':'الأيام:','OT:':'الإضافي:','PH:':'العطلة:',
+  'Full shift':'الوردية كاملة','4h (half day)':'4س (نصف يوم)','8h':'8س','12h':'12س',
+  'Normal duty — premium segs counted per config':'دوام عادي — تُحسب المقاطع الإضافية حسب الإعداد',
   // strip / misc
   'Tomorrow':'غداً','Rest day':'يوم راحة','OT':'إضافي','PH':'عطلة',
   'Sun':'الأحد','Mon':'الاثنين','Tue':'الثلاثاء','Wed':'الأربعاء','Thu':'الخميس','Fri':'الجمعة','Sat':'السبت',
@@ -563,7 +571,7 @@ function shade(hex,amt){var c=hexToRgb(hex);function ch(v){return Math.max(0,Mat
 function applyBg(){
   var el=document.documentElement.style;
   function set(bg,s1,s2,bd,tx,mu){el.setProperty('--bg',bg);el.setProperty('--s1',s1);el.setProperty('--s2',s2);el.setProperty('--bd',bd);el.setProperty('--tx',tx);el.setProperty('--mu',mu);document.body.style.background=bg;var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',toHex(bg));}
-  if(!ST.bgColor){set('#0A0A12','#12121E','#1A1A28','#222232','#E8E8F8','#5A5A80');return;}
+  if(!ST.bgColor){set('#0A0A12','#12121E','#1A1A28','#222232','#E8E8F8','#5A5A80');recomputeSBG();return;}
   var base=toHex(ST.bgColor);var c=hexToRgb(base);
   var lum=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;
   if(lum>0.55){ // light background → dark text, slightly darker surfaces
@@ -571,10 +579,11 @@ function applyBg(){
   } else { // dark background → light text, slightly lighter surfaces
     set(base,shade(base,0.07),shade(base,0.13),shade(base,0.20),'#EEEEF8',shade(base,0.55));
   }
+  recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.04-23';
-var APP_NOTE='ترجمة عربية أوسع بأسماء أيام كاملة / Fuller Arabic translation with full day names.';
+var APP_VER='2026.07.05-24';
+var APP_NOTE='خلايا الأيام تتبع لون الخلفية، ترجمة أوسع، "أول ليل" / Cells follow background colour, more Arabic.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -861,7 +870,8 @@ function openDay(ds){
   if(suppressTap||selMode){suppressTap=false;return;}
   editDs=ds;selDay=ds;render();
   var d=pd(ds);var DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  document.getElementById('dayT').textContent=DN[d.getDay()]+', '+d.toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+  var dName=(LANG==='ar')?AR.weekdays[d.getDay()]:DN[d.getDay()];
+  document.getElementById('dayT').textContent=(LANG==='ar')?(dName+'، '+d.getDate()+' '+localMonth(d.getMonth())):(dName+', '+d.toLocaleDateString('en-GB',{day:'numeric',month:'long'}));
   editSk=getShift(ds);
   renderSG('shGrid',editSk);
   document.getElementById('dayNote').value=ST.nt[ds]||'';
@@ -1053,7 +1063,7 @@ function openMulti(){
   var ks=Object.keys(selSet);if(!ks.length)return;
   mSel={};ks.forEach(function(k){mSel[k]=true;});
   mSelSk=getShift(ks[0]);mHL='keep';mPH=false;
-  document.getElementById('multiT').textContent='Edit '+ks.length+' day'+(ks.length>1?'s':'');
+  document.getElementById('multiT').textContent=(LANG==='ar')?('تعديل '+ks.length+' يوم'):('Edit '+ks.length+' day'+(ks.length>1?'s':''));
   renderMultiGrid(mSelSk);updateMHL('keep');
   var mt=document.getElementById('mPhTog');if(mt)mt.classList.remove('on');
   var pb=document.getElementById('mPasteBtn');
@@ -1309,7 +1319,7 @@ function savePat(){ST.pat=[].concat(ePat);savST();render();closeOv('patOv');toas
 
 // ── TEMP PERIOD ───────────────────────────────────────────────────────────────
 var tpEP=[],tpEL=4,tpEId=null;
-function openTpSh(id){tpEId=id;var ex=id?ST.tp.filter(function(t){return t.id===id;})[0]:null;document.getElementById('tpT').textContent=ex?'Edit Period':'New Period Pattern';document.getElementById('tpNm').value=ex?ex.nm:'';document.getElementById('tpSt').value=ex?ex.s:dk(new Date());document.getElementById('tpEn').value=ex?ex.e:'';tpEP=ex?[].concat(ex.p):['morning','morning','off','off'];tpEL=tpEP.length;document.getElementById('tcLen').textContent=tpEL;renderTPD();document.getElementById('tpOv').classList.add('op');}
+function openTpSh(id){tpEId=id;var ex=id?ST.tp.filter(function(t){return t.id===id;})[0]:null;document.getElementById('tpT').textContent=t(ex?'Edit Period':'New Period Pattern');document.getElementById('tpNm').value=ex?ex.nm:'';document.getElementById('tpSt').value=ex?ex.s:dk(new Date());document.getElementById('tpEn').value=ex?ex.e:'';tpEP=ex?[].concat(ex.p):['morning','morning','off','off'];tpEL=tpEP.length;document.getElementById('tcLen').textContent=tpEL;renderTPD();document.getElementById('tpOv').classList.add('op');}
 function stepTC(d){tpEL=Math.max(1,Math.min(60,tpEL+d));while(tpEP.length<tpEL)tpEP.push('off');while(tpEP.length>tpEL)tpEP.pop();document.getElementById('tcLen').textContent=tpEL;renderTPD();}
 function renderTPD(){var c=document.getElementById('tpPD');c.innerHTML='';tpEP.forEach(function(k,i){var el=document.createElement('div');el.className='pdi';el.style.background=SBG[k]||'#111118';el.style.borderColor=SC[k]||'#4B5563';el.innerHTML='<div class="pdn" style="color:'+(SC[k]||'#4B5563')+'">'+(i+1)+'</div><div class="pde">'+(SH[k]?SH[k].e:'?')+'</div>';el.onclick=(function(idx){return function(){openPD(idx,'tp');};})(i);c.appendChild(el);});}
 function saveTp(){var nm=document.getElementById('tpNm').value.trim()||'Period';var s=document.getElementById('tpSt').value,e=document.getElementById('tpEn').value;if(!s||!e){alert('Set dates.');return;}var entry={id:tpEId||String(Date.now()),nm:nm,s:s,e:e,p:[].concat(tpEP)};if(tpEId)ST.tp=ST.tp.map(function(t){return t.id===tpEId?entry:t;});else ST.tp.push(entry);savST();render();renderTpList();closeOv('tpOv');toast('Period saved ✓');}
@@ -1318,7 +1328,7 @@ function delTp(id){if(confirm('Delete?')){ST.tp=ST.tp.filter(function(t){return 
 
 // ── PAT DAY PICKER ────────────────────────────────────────────────────────────
 var pdI=null,pdC='base';
-function openPD(i,c){pdI=i;pdC=c;document.getElementById('pdT').textContent='Day '+(i+1);var cur=c==='tp'?tpEP[i]:ePat[i];renderSG2('pdGrid',cur);document.getElementById('pdOv').classList.add('op');}
+function openPD(i,c){pdI=i;pdC=c;document.getElementById('pdT').textContent=(LANG==='ar'?'يوم ':'Day ')+(i+1);var cur=c==='tp'?tpEP[i]:ePat[i];renderSG2('pdGrid',cur);document.getElementById('pdOv').classList.add('op');}
 function renderSG2(gId,cur){
   var g=document.getElementById(gId);if(!g)return;g.innerHTML='';
   Object.keys(SH).forEach(function(k){
@@ -1349,8 +1359,8 @@ function loadSettings(){
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
 }
 function savLang(){ST.lang=document.getElementById('langSel').value;savST();applyLang();render();renderGuide();renderShiftAppearance();renderOTCfg();toast('Saved ✓');}
-function savBg(){ST.bgColor=document.getElementById('bgInp').value;savST();applyBg();toast('Saved ✓');}
-function resetBg(){ST.bgColor='';var el=document.getElementById('bgInp');if(el)el.value='#0A0A12';savST();applyBg();toast('Reset ✓');}
+function savBg(){ST.bgColor=document.getElementById('bgInp').value;savST();applyBg();render();renderShiftAppearance();toast('Saved ✓');}
+function resetBg(){ST.bgColor='';var el=document.getElementById('bgInp');if(el)el.value='#0A0A12';savST();applyBg();render();renderShiftAppearance();toast('Reset ✓');}
 function renderGuide(){
   var c=document.getElementById('guideSec');if(!c)return;
   var en=[
@@ -1393,7 +1403,7 @@ var EMOJIS=['🌅','🌄','☀️','🌤️','⛅','🌞','🌙','🌛','🌜','
 var emojiKey=null;
 function openEmojiPicker(k){
   emojiKey=k;
-  document.getElementById('emojiT').textContent='Icon · '+(SH[k]?SH[k].n:'');
+  document.getElementById('emojiT').textContent=(LANG==='ar'?'أيقونة · ':'Icon · ')+(SH[k]?SH[k].n:'');
   document.getElementById('emojiCustom').value='';
   var g=document.getElementById('emojiGrid');g.innerHTML='';
   EMOJIS.forEach(function(e){
