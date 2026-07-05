@@ -153,6 +153,36 @@ input[type=time],input[type=number]{width:auto;}
         <div class="tg" id="linkTog" onclick="togLink()"></div>
       </div></div>
 
+      <div class="sct">Reminders &amp; Alarm</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Export your shifts to Apple Calendar with an alarm before each shift. iOS then rings the reminders — no internet needed.</div>
+      <div class="sc2">
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">Add alarm to each shift</div><div class="ss2">Includes a reminder in the exported events</div></div>
+          <div class="tg" id="remTog" onclick="togRemind()"></div>
+        </div>
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">Remind before shift</div></div>
+          <select id="remLead" onchange="savRemLead()" style="width:auto;padding:7px 10px">
+            <option value="0">At shift start</option>
+            <option value="15">15 min before</option>
+            <option value="30">30 min before</option>
+            <option value="60">1 hour before</option>
+            <option value="120">2 hours before</option>
+            <option value="180">3 hours before</option>
+            <option value="720">12 hours before</option>
+          </select>
+        </div>
+        <div class="sr2" style="cursor:default">
+          <div style="flex:1"><div class="sl2">Export range</div><div class="ss2">Which days to add to the calendar</div></div>
+        </div>
+        <div class="sr2" style="cursor:default;gap:9px">
+          <div style="flex:1"><div style="font-size:12px;color:var(--mu);margin-bottom:3px">From</div><input type="date" id="icsFrom" style="width:100%"/></div>
+          <div style="flex:1"><div style="font-size:12px;color:var(--mu);margin-bottom:3px">To</div><input type="date" id="icsTo" style="width:100%"/></div>
+        </div>
+      </div>
+      <button class="btn bp" onclick="exportICS()">&#128197; Export to Calendar (.ics)</button>
+      <button class="btn bs" onclick="showRemindHelp()" style="margin-top:6px">How to use / كيفية الاستخدام</button>
+
       <div class="sct">Cycle Start Date</div>
       <div class="sc2"><div class="sr2" style="cursor:default">
         <div><div class="sl2">Pattern Start</div><div class="ss2">Day 1 of your cycle</div></div>
@@ -566,7 +596,12 @@ var AR={
   'Default × when off/rest → duty':'المعدل الافتراضي × عند التحوّل من راحة إلى دوام','Default × for PH duty days':'المعدل الافتراضي × لأيام العطلة الرسمية',
   'Set your rate, then set OT segments per shift below.':'اضبط أجرك ثم اضبط مقاطع الإضافي لكل وردية أدناه.',
   'Normal day':'يوم عادي','normal':'عادي','no OT pay':'لا أجر إضافي','Off-Duty':'خارج الدوام','None':'بدون','Rate':'المعدل',
-  'Normal-day OT segments (0 = no OT on normal days):':'مقاطع الإضافي لليوم العادي (0 = لا إضافي في الأيام العادية):'
+  'Normal-day OT segments (0 = no OT on normal days):':'مقاطع الإضافي لليوم العادي (0 = لا إضافي في الأيام العادية):',
+  'Reminders & Alarm':'التنبيهات والمنبّه','Add alarm to each shift':'إضافة منبّه لكل وردية','Includes a reminder in the exported events':'يُضمّن تذكيراً في الأحداث المُصدّرة',
+  'Remind before shift':'التذكير قبل الوردية','Export range':'مدى التصدير','Which days to add to the calendar':'أي الأيام تُضاف إلى التقويم',
+  '📅 Export to Calendar (.ics)':'📅 تصدير إلى التقويم (.ics)','How to use / كيفية الاستخدام':'كيفية الاستخدام',
+  'Export your shifts to Apple Calendar with an alarm before each shift. iOS then rings the reminders — no internet needed.':'صدّر ورديّاتك إلى تقويم آيفون مع منبّه قبل كل وردية، وسيرنّ آيفون التنبيهات — بدون إنترنت.',
+  'At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -579,7 +614,7 @@ function walkTranslate(root){
   if(root.querySelectorAll)Array.prototype.push.apply(list,root.querySelectorAll('*'));
   for(var i=0;i<list.length;i++){
     var el=list[i],tg=el.tagName;
-    if(tg==='SCRIPT'||tg==='STYLE'||tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||tg==='OPTION')continue;
+    if(tg==='SCRIPT'||tg==='STYLE'||tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT')continue;
     for(var j=0;j<el.childNodes.length;j++){
       var n=el.childNodes[j];
       if(n.nodeType!==3)continue;
@@ -633,8 +668,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-30';
-var APP_NOTE='تعديل اسم وردية الليل إلى "آخر ليل" / Night shift renamed to آخر ليل.';
+var APP_VER='2026.07.05-31';
+var APP_NOTE='تنبيهات الورديات عبر تصدير التقويم (.ics) / Shift alarms via Calendar (.ics) export.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -653,6 +688,7 @@ var ST={
   ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
   otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',
+  remindOn:true,remindLead:60,
 };
 
 function loadST(){
@@ -660,7 +696,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindOn','remindLead','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -674,6 +710,8 @@ function loadST(){
       if(!ST.shCustom)ST.shCustom={};
       if(!ST.lang)ST.lang='en';
       if(ST.bgColor==null)ST.bgColor='';
+      if(ST.remindOn==null)ST.remindOn=true;
+      if(ST.remindLead==null)ST.remindLead=60;
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
       if(ST.linkCalOT==null)ST.linkCalOT=true;
@@ -1407,6 +1445,10 @@ function loadSettings(){
   var lt=document.getElementById('linkTog');if(lt)lt.classList.toggle('on',ST.linkCalOT!==false);
   var lg=document.getElementById('langSel');if(lg)lg.value=ST.lang||'en';
   var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#0A0A12';
+  var rt=document.getElementById('remTog');if(rt)rt.classList.toggle('on',ST.remindOn!==false);
+  var rl=document.getElementById('remLead');if(rl)rl.value=String(ST.remindLead!=null?ST.remindLead:60);
+  var icf=document.getElementById('icsFrom');if(icf&&!icf.value)icf.value=dk(new Date());
+  var ict=document.getElementById('icsTo');if(ict&&!ict.value)ict.value=dk(aD(new Date(),60));
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
@@ -1452,6 +1494,70 @@ function togLink(){ST.linkCalOT=!ST.linkCalOT;document.getElementById('linkTog')
 function savOffRate(){ST.offRate=parseFloat(document.getElementById('offRateInp').value)||1.5;savST();renderOTCfg();toast('Saved ✓');}
 function savPhRate(){ST.phRate=parseFloat(document.getElementById('phRateInp').value)||1.5;savST();renderOTCfg();toast('Saved ✓');}
 function savCurr(){var v=document.getElementById('otCurr').value;ST.otCurr=v;var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(v);savST();toast('Saved ✓');}
+
+// ── REMINDERS: CALENDAR (.ics) EXPORT WITH ALARMS ────────────────────────────
+function icsPad(n){return String(n).padStart(2,'0');}
+function icsLocal(d){return d.getFullYear()+icsPad(d.getMonth()+1)+icsPad(d.getDate())+'T'+icsPad(d.getHours())+icsPad(d.getMinutes())+'00';}
+function icsUTC(d){return d.getUTCFullYear()+icsPad(d.getUTCMonth()+1)+icsPad(d.getUTCDate())+'T'+icsPad(d.getUTCHours())+icsPad(d.getUTCMinutes())+icsPad(d.getUTCSeconds())+'Z';}
+function icsEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');}
+function buildICS(fromDs,toDs){
+  var lead=parseInt(ST.remindLead!=null?ST.remindLead:60,10);var withAlarm=ST.remindOn!==false;
+  var stamp=icsUTC(new Date());
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ShiftCalOT//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+(LANG==='ar'?'ورديات العمل':'Work Shifts')];
+  var cur=pd(fromDs),to=pd(toDs),count=0;
+  while(cur<=to){
+    var ds=dk(cur);var sk=getShift(ds);var sh=SH[sk];
+    if(sh&&sh.s){
+      var sp=sh.s.split(':'),fp=sh.f.split(':');
+      var st=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate(),parseInt(sp[0],10),parseInt(sp[1],10));
+      var en=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate(),parseInt(fp[0],10),parseInt(fp[1],10));
+      if(en.getTime()<=st.getTime())en=new Date(en.getTime()+86400000);
+      var isPH=!!ST.ph[ds];var ot=isOT(ds);
+      var title=sh.e+' '+sh.n+(ot?(LANG==='ar'?' (إضافي)':' (OT)'):'')+(isPH?(LANG==='ar'?' (عطلة)':' (PH)'):'');
+      L.push('BEGIN:VEVENT');
+      L.push('UID:'+ds+'-'+sk+'@shiftcalot');
+      L.push('DTSTAMP:'+stamp);
+      L.push('DTSTART:'+icsLocal(st));
+      L.push('DTEND:'+icsLocal(en));
+      L.push('SUMMARY:'+icsEsc(title));
+      L.push('DESCRIPTION:'+icsEsc(sh.s+' - '+sh.f));
+      if(withAlarm){
+        L.push('BEGIN:VALARM');
+        L.push('ACTION:DISPLAY');
+        L.push('DESCRIPTION:'+icsEsc(sh.n));
+        L.push('TRIGGER:'+(lead>0?('-PT'+lead+'M'):'PT0M'));
+        L.push('END:VALARM');
+      }
+      L.push('END:VEVENT');
+      count++;
+    }
+    cur=aD(cur,1);
+  }
+  L.push('END:VCALENDAR');
+  return {ics:L.join('\r\n'),count:count};
+}
+function exportICS(){
+  var f=document.getElementById('icsFrom').value,tt=document.getElementById('icsTo').value;
+  if(!f||!tt){toast(LANG==='ar'?'حدّد التواريخ':'Set dates');return;}
+  var res=buildICS(f,tt);
+  if(!res.count){toast(LANG==='ar'?'لا ورديات في المدى':'No shifts in range');return;}
+  try{
+    var blob=new Blob([res.ics],{type:'text/calendar;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download='ShiftCalendar.ics';document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(url);if(a.parentNode)a.parentNode.removeChild(a);},1500);
+  }catch(e){
+    try{location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(res.ics);}catch(e2){}
+  }
+  toast((LANG==='ar'?'تم تصدير ':'Exported ')+res.count+(LANG==='ar'?' وردية ✓':' shifts ✓'));
+}
+function togRemind(){ST.remindOn=!ST.remindOn;document.getElementById('remTog').classList.toggle('on',ST.remindOn);savST();toast(t('Saved ✓'));}
+function savRemLead(){ST.remindLead=parseInt(document.getElementById('remLead').value,10);savST();toast(t('Saved ✓'));}
+function showRemindHelp(){
+  alert(LANG==='ar'
+    ?'لإضافة تنبيهات الورديات إلى آيفون:\n\n1) اضبط "التذكير قبل الوردية" ومدى التواريخ.\n2) اضغط "تصدير إلى التقويم".\n3) افتح الملف الذي تم تنزيله (ShiftCalendar.ics) — سيسأل آيفون: أضف الكل إلى التقويم.\n4) سيرنّ آيفون قبل كل وردية حسب الوقت المحدد.\n\nعند تغيير جدولك صدّر مرة أخرى لتحديث الأحداث.'
+    :'To add shift alarms to iPhone:\n\n1) Set "Remind before shift" and the date range.\n2) Tap "Export to Calendar".\n3) Open the downloaded file (ShiftCalendar.ics) — iPhone asks: Add All to Calendar.\n4) iPhone alerts you before each shift by your chosen lead time.\n\nWhen your schedule changes, export again to refresh.');
+}
 
 var EMOJIS=['🌅','🌄','☀️','🌤️','⛅','🌞','🌙','🌛','🌜','🌚','⭐','🌟','✨','🔆','🌃','🌌','🛌','😴','💤','🛏️','🏥','💼','🩺','💊','🚑','🧑‍⚕️','👮','🚒','🚓','📚','📖','✏️','🎓','🔑','🗝️','🚪','🏖️','🌴','✈️','🧳','🏝️','⚓','🤒','🤕','🤧','😷','🩹','🩺','📅','📆','🕐','🕒','⏰','⏱️','⌚','💰','💵','🪙','🏠','🏢','🚗','🚌','🏭','🔧','😀','🙂','😎','🥳','🔥','⚡','💪','⭕','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🟠','🟡','🟢','🔵','🟣','🔴','⚪','⚫'];
 var emojiKey=null;
@@ -1598,7 +1704,7 @@ function renderOTCfg(){
 }
 
 function resetOv(){if(confirm('Clear all overrides, notes, highlights?')){ST.ov={};ST.hl={};ST.nt={};ST.ph={};ST.manualOT={};ST.otHours={};ST.otRateDay={};savST();render();}}
-function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:''};applyShiftCustom();applyLang();applyBg();savST();render();}}
+function resetAll(){if(confirm('Full reset?')){ST={cs:'2026-05-10',pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},otCfg:JSON.parse(JSON.stringify(DEF_OT)),otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',remindOn:true,remindLead:60};applyShiftCustom();applyLang();applyBg();savST();render();}}
 
 // ── OT PAGE ───────────────────────────────────────────────────────────────────
 function renderOTPage(){
