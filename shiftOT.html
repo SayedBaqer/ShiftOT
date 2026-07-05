@@ -671,8 +671,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-34';
-var APP_NOTE='مزامنة تلقائية لتقويم ShiftCal: حذف الكل وإعادة الكتابة مع كل تعديل / Auto calendar sync: delete-all & rewrite on every edit.';
+var APP_VER='2026.07.06-35';
+var APP_NOTE='الأتمتة اليومية تعمل الآن بدون فتح التطبيق (السكربت يحفظ الجدول) / Daily automation now works without opening the app.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1564,8 +1564,13 @@ function buildScriptable(){
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
   L.push('(async()=>{');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
-  L.push('let raw=p.data||Pasteboard.paste();');
-  L.push('let D;try{D=JSON.parse(raw);}catch(e){let a=new Alert();a.title="ShiftCal";a.message="No schedule data. Run it from the app (Sync now).";a.addAction("OK");await a.present();Script.complete();return;}');
+  L.push('let fm=FileManager.local();');
+  L.push('let fp=fm.joinPath(fm.documentsDirectory(),"shiftcal-data.json");');
+  L.push('let raw=p.data||"";');
+  L.push('if(raw){try{fm.writeString(fp,raw);}catch(x){}}');
+  L.push('else if(fm.fileExists(fp)){raw=fm.readString(fp);}');
+  L.push('let D;try{D=JSON.parse(raw);}catch(e){let a=new Alert();a.title="ShiftCal";a.message="No schedule data yet. Open the app and tap Sync now once.";a.addAction("OK");await a.present();Script.complete();return;}');
+  L.push('let ageDays=0;if(D.ts){let tp=D.ts.split("-").map(Number);ageDays=Math.round((Date.now()-new Date(tp[0],tp[1]-1,tp[2]).getTime())/86400000);}');
   L.push('let cal;try{cal=await Calendar.forEventsByTitle(D.cal);}catch(e){cal=null;}');
   L.push('if(!cal){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();Script.complete();return;}');
   L.push('let start=new Date();start.setHours(0,0,0,0);');
@@ -1573,10 +1578,11 @@ function buildScriptable(){
   L.push('let old=await CalendarEvent.between(start,end,[cal]);');
   L.push('for(let e of old){try{e.remove();}catch(x){}}');
   L.push('let made=0;');
-  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let fp=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let ed=new Date(dp[0],dp[1]-1,dp[2],fp[0],fp[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";ce.save();made++;}');
+  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let ep=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);if(sd<start)continue;let ed=new Date(dp[0],dp[1]-1,dp[2],ep[0],ep[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";ce.save();made++;}');
   L.push('let pend=await Notification.allPending();for(let n of pend){if(n.identifier&&n.identifier.indexOf("shiftcal-")===0)n.remove();}');
   L.push('let now=new Date();let alarms=0;');
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
+  L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
   L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal";a.message=made+" events, "+alarms+" alarms";a.addAction("OK");await a.present();}');
   L.push('Script.complete();');
   L.push('})();');
@@ -1594,7 +1600,7 @@ function buildSyncPayload(){
     var title=(sh.e?sh.e+' ':'')+sh.n+(ot?(LANG==='ar'?' (إضافي)':' (OT)'):'')+(isPH?(LANG==='ar'?' (عطلة)':' (PH)'):'');
     ev.push([ds,title,sh.s,sh.f]);
   }
-  return {cal:ST.calName||'ShiftCal',days:days,lead:lead,title:(LANG==='ar'?'تذكير وردية':'Shift reminder'),ev:ev};
+  return {cal:ST.calName||'ShiftCal',days:days,lead:lead,ts:dk(now),title:(LANG==='ar'?'تذكير وردية':'Shift reminder'),ev:ev};
 }
 function syncNow(){
   var payload=buildSyncPayload();
@@ -1645,8 +1651,8 @@ function copyScriptable(){
 }
 function showScriptableHelp(){
   alert(LANG==='ar'
-    ?'مزامنة التقويم التلقائية (إعداد مرة واحدة):\n\n1) ثبّت تطبيق Scriptable المجاني من App Store.\n2) في تطبيق التقويم بآيفون: أنشئ تقويماً جديداً باسم ShiftCal (التقويمات ← إضافة تقويم).\n3) هنا: اضغط "نسخ سكربت المزامنة" → افتح Scriptable → (+) سكربت جديد → الصق → سمِّه بالضبط: ShiftCal.\n4) فعّل "تحديث التقويم تلقائياً" هنا.\n\nبعدها: أي تعديل على جدولك يُظهر زر "🔄 تحديث تنبيهات التقويم" — بضغطة واحدة يفتح Scriptable، يحذف كل أحداث تقويم ShiftCal ويعيد كتابتها مع منبّهاتها من جدولك الجديد، ثم يرجع للتطبيق تلقائياً.\n\nملاحظة: iOS يمنع صفحات الويب من فتح تطبيق آخر بدون لمسة منك، لذا الضغطة الواحدة هي الحد الأدنى الممكن.'
-    :'Automatic calendar sync (one-time setup):\n\n1) Install the free Scriptable app.\n2) In the iPhone Calendar app: create a new calendar named ShiftCal (Calendars → Add Calendar).\n3) Here: tap "Copy sync script" → open Scriptable → (+) New Script → paste → name it exactly: ShiftCal.\n4) Turn ON "Auto-update calendar" here.\n\nThen: any schedule edit shows a "🔄 Update calendar reminders" button — one tap opens Scriptable, which deletes all ShiftCal-calendar events and rewrites them with alarms from your new schedule, then returns to the app automatically.\n\nNote: iOS requires one tap to open another app from a web page, so a single tap is the minimum possible.');
+    ?'مزامنة التقويم التلقائية (إعداد مرة واحدة):\n\n1) ثبّت تطبيق Scriptable المجاني من App Store.\n2) في تطبيق التقويم بآيفون: أنشئ تقويماً جديداً باسم ShiftCal (التقويمات ← إضافة تقويم).\n3) هنا: اضغط "نسخ سكربت المزامنة" → افتح Scriptable → (+) سكربت جديد → الصق → سمِّه بالضبط: ShiftCal.\n4) فعّل "تحديث التقويم تلقائياً" هنا، ثم اضغط "مزامنة الآن" مرة واحدة.\n5) (اختياري لكن موصى به) أتمتة يومية: تطبيق الاختصارات ← Automation ← أتمتة شخصية ← "وقت من اليوم" (مثلاً 9 مساءً) ← Run Script ← ShiftCal ← أوقف "اسأل قبل التشغيل".\n\nبعدها: أي تعديل يُظهر زر "🔄" — ضغطة واحدة تحدّث كل الأحداث والمنبّهات وترجع للتطبيق. والأتمتة الليلية تعيد الجدولة يومياً من آخر جدول محفوظ حتى لو لم تفتح التطبيق (السكربت يحفظ الجدول في ذاكرته، وينبّهك إن أصبح قديماً).'
+    :'Automatic calendar sync (one-time setup):\n\n1) Install the free Scriptable app.\n2) In the iPhone Calendar app: create a new calendar named ShiftCal (Calendars → Add Calendar).\n3) Here: tap "Copy sync script" → open Scriptable → (+) New Script → paste → name it exactly: ShiftCal.\n4) Turn ON "Auto-update calendar" here, then tap "Sync calendar now" once.\n5) (Optional, recommended) Daily automation: Shortcuts app → Automation → Personal Automation → "Time of Day" (e.g. 9 PM) → Run Script → ShiftCal → turn OFF "Ask Before Running".\n\nThen: any edit shows the "🔄" button — one tap refreshes all events & alarms and returns to the app. The nightly automation also re-schedules daily from the last saved schedule even if you never open the app (the script caches your schedule and warns you if it gets old).');
 }
 
 var EMOJIS=['🌅','🌄','☀️','🌤️','⛅','🌞','🌙','🌛','🌜','🌚','⭐','🌟','✨','🔆','🌃','🌌','🛌','😴','💤','🛏️','🏥','💼','🩺','💊','🚑','🧑‍⚕️','👮','🚒','🚓','📚','📖','✏️','🎓','🔑','🗝️','🚪','🏖️','🌴','✈️','🧳','🏝️','⚓','🤒','🤕','🤧','😷','🩹','🩺','📅','📆','🕐','🕒','⏰','⏱️','⌚','💰','💵','🪙','🏠','🏢','🚗','🚌','🏭','🔧','😀','🙂','😎','🥳','🔥','⚡','💪','⭕','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🟠','🟡','🟢','🔵','🟣','🔴','⚪','⚫'];
