@@ -153,9 +153,13 @@ input[type=time],input[type=number]{width:auto;}
         <div class="tg" id="linkTog" onclick="togLink()"></div>
       </div></div>
 
-      <div class="sct">Auto Reminders (Scriptable)</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.</div>
+      <div class="sct">Reminders</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Smart alerts: the app itself reminds you while it&#8217;s open, and the Scriptable automation covers you when it&#8217;s closed.</div>
       <div class="sc2">
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">In-app alerts</div><div class="ss2" id="inAppDesc">Notify me when the app is open / installed</div></div>
+          <div class="tg" id="inAppTog" onclick="togInApp()"></div>
+        </div>
         <div class="sr2" style="cursor:default">
           <div><div class="sl2">Remind before shift</div></div>
           <select id="remLead" onchange="savRemLead()" style="width:auto;padding:7px 10px">
@@ -587,6 +591,8 @@ var AR={
   'Set your rate, then set OT segments per shift below.':'اضبط أجرك ثم اضبط مقاطع الإضافي لكل وردية أدناه.',
   'Normal day':'يوم عادي','normal':'عادي','no OT pay':'لا أجر إضافي','Off-Duty':'خارج الدوام','None':'بدون','Rate':'المعدل',
   'Normal-day OT segments (0 = no OT on normal days):':'مقاطع الإضافي لليوم العادي (0 = لا إضافي في الأيام العادية):',
+  'Reminders':'التنبيهات','In-app alerts':'تنبيهات داخل التطبيق','Notify me when the app is open / installed':'أعلمني عندما يكون التطبيق مفتوحاً',
+  'Smart alerts: the app itself reminds you while it’s open, and the Scriptable automation covers you when it’s closed.':'تنبيهات ذكية: التطبيق يذكّرك أثناء فتحه، وأتمتة Scriptable تغطيك عندما يكون مغلقاً.',
   'Auto Reminders (Scriptable)':'تنبيهات تلقائية (Scriptable)','Remind before shift':'التذكير قبل الوردية',
   'Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.':'تنبيهات ورديات تلقائية على آيفون عبر تطبيق Scriptable المجاني + أتمتة يومية. الإعداد مرة واحدة، ويعيد الجدولة يومياً تلقائياً.',
   '📋 Copy Scriptable script':'📋 نسخ سكربت Scriptable','How to set up / كيفية الإعداد':'كيفية الإعداد',
@@ -657,8 +663,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-32';
-var APP_NOTE='تنبيهات تلقائية عبر Scriptable + أتمتة يومية / Automatic reminders via Scriptable + daily automation.';
+var APP_VER='2026.07.05-33';
+var APP_NOTE='تنبيهات ذكية داخل التطبيق + إشعارات النظام / Smart in-app alerts + system notifications.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -676,7 +682,7 @@ var ST={
   pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],
   ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
-  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',remindLead:60,
+  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',remindLead:60,inApp:false,
 };
 
 function loadST(){
@@ -684,7 +690,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindLead','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindLead','inApp','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -717,7 +723,9 @@ function loadST(){
   applyShiftCustom();
 }
 
-function savST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}}
+var _rsT=null;
+function savST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}
+  clearTimeout(_rsT);_rsT=setTimeout(function(){if(typeof scheduleInApp==='function')scheduleInApp();},400);}
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function dk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1433,6 +1441,7 @@ function loadSettings(){
   var lg=document.getElementById('langSel');if(lg)lg.value=ST.lang||'en';
   var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#0A0A12';
   var rl=document.getElementById('remLead');if(rl)rl.value=String(ST.remindLead!=null?ST.remindLead:60);
+  updateInAppUI();
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
@@ -1480,7 +1489,62 @@ function savPhRate(){ST.phRate=parseFloat(document.getElementById('phRateInp').v
 function savCurr(){var v=document.getElementById('otCurr').value;ST.otCurr=v;var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(v);savST();toast('Saved ✓');}
 
 // ── AUTO REMINDERS via SCRIPTABLE ────────────────────────────────────────────
-function savRemLead(){ST.remindLead=parseInt(document.getElementById('remLead').value,10);savST();toast(t('Saved ✓'));}
+function savRemLead(){ST.remindLead=parseInt(document.getElementById('remLead').value,10);savST();scheduleInApp();toast(t('Saved ✓'));}
+
+// ── SMART IN-APP ALERTS (Web Notification API + live timers) ─────────────────
+var _inAppTimers=[];
+function clearInAppTimers(){_inAppTimers.forEach(clearTimeout);_inAppTimers=[];}
+function fireShiftAlert(sh,when){
+  var title=LANG==='ar'?'تذكير وردية':'Shift reminder';
+  var body=(sh.e?sh.e+' ':'')+sh.n+' • '+sh.s+(LANG==='ar'?' يبدأ':' starts');
+  var shown=false;
+  try{
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      var n=new Notification(title,{body:body,tag:'shiftcal-'+when,icon:makeIcon(96)});
+      shown=true;
+    }
+  }catch(e){}
+  if(navigator.vibrate)navigator.vibrate([200,100,200]);
+  toast('⏰ '+body,8000);
+  return shown;
+}
+// Schedule timers for shifts starting within the next 36h while the app runs.
+function scheduleInApp(){
+  clearInAppTimers();
+  if(!ST.inApp)return;
+  var lead=parseInt(ST.remindLead!=null?ST.remindLead:60,10);
+  var now=new Date();
+  for(var i=0;i<3;i++){
+    var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
+    var ds=dk(d);var sk=getShift(ds);var sh=SH[sk];
+    if(!sh||!sh.s)continue;
+    var sp=sh.s.split(':');
+    var start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),parseInt(sp[0],10),parseInt(sp[1],10));
+    var trig=start.getTime()-lead*60000-now.getTime();
+    if(trig<=0||trig>36*3600000)continue;
+    (function(shift,ts){_inAppTimers.push(setTimeout(function(){fireShiftAlert(shift,ts);},trig));})(sh,start.getTime());
+  }
+}
+function togInApp(){
+  var turnOn=!ST.inApp;
+  if(turnOn&&typeof Notification!=='undefined'&&Notification.permission!=='granted'){
+    try{Notification.requestPermission().then(function(p){
+      ST.inApp=true;savST();updateInAppUI();scheduleInApp();
+      toast(p==='granted'?(LANG==='ar'?'تم تفعيل التنبيهات ✓':'Alerts enabled ✓'):(LANG==='ar'?'سيظهر التنبيه داخل التطبيق فقط':'In-app banner alerts only'));
+    });}catch(e){ST.inApp=true;savST();updateInAppUI();scheduleInApp();}
+  } else {
+    ST.inApp=turnOn;savST();updateInAppUI();scheduleInApp();
+    toast(t('Saved ✓'));
+  }
+}
+function updateInAppUI(){
+  var tg=document.getElementById('inAppTog');if(tg)tg.classList.toggle('on',!!ST.inApp);
+  var d=document.getElementById('inAppDesc');
+  if(d){
+    var granted=(typeof Notification!=='undefined'&&Notification.permission==='granted');
+    d.textContent=ST.inApp?(granted?(LANG==='ar'?'مفعّل — إشعارات النظام':'On — system notifications'):(LANG==='ar'?'مفعّل — تنبيه داخل التطبيق':'On — in-app banner')):(LANG==='ar'?'أعلمني عندما يكون التطبيق مفتوحاً':'Notify me when the app is open / installed');
+  }
+}
 function buildScriptable(){
   var lead=parseInt(ST.remindLead!=null?ST.remindLead:60,10);
   var shMap={};Object.keys(SH).forEach(function(k){var s=SH[k];shMap[k]={n:s.n,e:s.e,s:s.s,f:s.f};});
@@ -1853,6 +1917,8 @@ setupGridSel();
 setupSheetSwipe();
 setupCalSwipe();
 checkUpdate();
+scheduleInApp();
+document.addEventListener('visibilitychange',function(){if(!document.hidden)scheduleInApp();});
 </script>
 </body>
 </html>
