@@ -153,12 +153,12 @@ input[type=time],input[type=number]{width:auto;}
         <div class="tg" id="linkTog" onclick="togLink()"></div>
       </div></div>
 
-      <div class="sct">Reminders</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Smart alerts: the app itself reminds you while it&#8217;s open, and the Scriptable automation covers you when it&#8217;s closed.</div>
+      <div class="sct">Calendar Reminders</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">The app keeps a dedicated iPhone calendar (&#8220;ShiftCal&#8221;) in sync: on every schedule edit it refreshes all its events and alarms via Scriptable — delete-all &amp; rewrite, automatically.</div>
       <div class="sc2">
         <div class="sr2" style="cursor:default">
-          <div><div class="sl2">In-app alerts</div><div class="ss2" id="inAppDesc">Notify me when the app is open / installed</div></div>
-          <div class="tg" id="inAppTog" onclick="togInApp()"></div>
+          <div><div class="sl2">Auto-update calendar</div><div class="ss2">After any edit, one tap refreshes everything</div></div>
+          <div class="tg" id="calSyncTog" onclick="togCalSync()"></div>
         </div>
         <div class="sr2" style="cursor:default">
           <div><div class="sl2">Remind before shift</div></div>
@@ -172,8 +172,13 @@ input[type=time],input[type=number]{width:auto;}
             <option value="720">12 hours before</option>
           </select>
         </div>
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">In-app alerts</div><div class="ss2" id="inAppDesc">Notify me when the app is open / installed</div></div>
+          <div class="tg" id="inAppTog" onclick="togInApp()"></div>
+        </div>
       </div>
-      <button class="btn bp" onclick="copyScriptable()">&#128203; Copy Scriptable script</button>
+      <button class="btn bp" onclick="syncNow()">&#128260; Sync calendar now</button>
+      <button class="btn bs" onclick="copyScriptable()" style="margin-top:6px">&#128203; Copy sync script (one-time setup)</button>
       <button class="btn bs" onclick="showScriptableHelp()" style="margin-top:6px">How to set up / كيفية الإعداد</button>
       <textarea id="scriptTA" readonly style="display:none;margin-top:8px;min-height:120px;font-family:'Courier New',monospace;font-size:10px"></textarea>
 
@@ -591,7 +596,10 @@ var AR={
   'Set your rate, then set OT segments per shift below.':'اضبط أجرك ثم اضبط مقاطع الإضافي لكل وردية أدناه.',
   'Normal day':'يوم عادي','normal':'عادي','no OT pay':'لا أجر إضافي','Off-Duty':'خارج الدوام','None':'بدون','Rate':'المعدل',
   'Normal-day OT segments (0 = no OT on normal days):':'مقاطع الإضافي لليوم العادي (0 = لا إضافي في الأيام العادية):',
-  'Reminders':'التنبيهات','In-app alerts':'تنبيهات داخل التطبيق','Notify me when the app is open / installed':'أعلمني عندما يكون التطبيق مفتوحاً',
+  'Reminders':'التنبيهات','Calendar Reminders':'تنبيهات التقويم','In-app alerts':'تنبيهات داخل التطبيق','Notify me when the app is open / installed':'أعلمني عندما يكون التطبيق مفتوحاً',
+  'Auto-update calendar':'تحديث التقويم تلقائياً','After any edit, one tap refreshes everything':'بعد أي تعديل، ضغطة واحدة تحدّث كل شيء',
+  '🔄 Sync calendar now':'🔄 مزامنة التقويم الآن','📋 Copy sync script (one-time setup)':'📋 نسخ سكربت المزامنة (إعداد مرة واحدة)',
+  'The app keeps a dedicated iPhone calendar (“ShiftCal”) in sync: on every schedule edit it refreshes all its events and alarms via Scriptable — delete-all & rewrite, automatically.':'يحافظ التطبيق على تقويم مخصص في آيفون باسم ShiftCal: مع كل تعديل يحدّث كل أحداثه ومنبّهاته عبر Scriptable — حذف الكل وإعادة الكتابة، تلقائياً.',
   'Smart alerts: the app itself reminds you while it’s open, and the Scriptable automation covers you when it’s closed.':'تنبيهات ذكية: التطبيق يذكّرك أثناء فتحه، وأتمتة Scriptable تغطيك عندما يكون مغلقاً.',
   'Auto Reminders (Scriptable)':'تنبيهات تلقائية (Scriptable)','Remind before shift':'التذكير قبل الوردية',
   'Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.':'تنبيهات ورديات تلقائية على آيفون عبر تطبيق Scriptable المجاني + أتمتة يومية. الإعداد مرة واحدة، ويعيد الجدولة يومياً تلقائياً.',
@@ -663,8 +671,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-33';
-var APP_NOTE='تنبيهات ذكية داخل التطبيق + إشعارات النظام / Smart in-app alerts + system notifications.';
+var APP_VER='2026.07.06-34';
+var APP_NOTE='مزامنة تلقائية لتقويم ShiftCal: حذف الكل وإعادة الكتابة مع كل تعديل / Auto calendar sync: delete-all & rewrite on every edit.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -682,7 +690,7 @@ var ST={
   pat:['morning','morning','morning','night','night','night','off','off','afternoon','afternoon','afternoon','off'],
   ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
-  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',remindLead:60,inApp:false,
+  otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',remindLead:60,inApp:false,calSync:false,calName:'ShiftCal',lastSync:'',
 };
 
 function loadST(){
@@ -690,7 +698,7 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindLead','inApp','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindLead','inApp','calSync','calName','lastSync','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -705,6 +713,8 @@ function loadST(){
       if(!ST.lang)ST.lang='en';
       if(ST.bgColor==null)ST.bgColor='';
       if(ST.remindLead==null)ST.remindLead=60;
+      if(!ST.calName)ST.calName='ShiftCal';
+      if(ST.lastSync==null)ST.lastSync='';
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
       if(ST.linkCalOT==null)ST.linkCalOT=true;
@@ -725,7 +735,7 @@ function loadST(){
 
 var _rsT=null;
 function savST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}
-  clearTimeout(_rsT);_rsT=setTimeout(function(){if(typeof scheduleInApp==='function')scheduleInApp();},400);}
+  clearTimeout(_rsT);_rsT=setTimeout(function(){if(typeof scheduleInApp==='function')scheduleInApp();if(typeof maybeOfferSync==='function')maybeOfferSync();},400);}
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function dk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1441,6 +1451,7 @@ function loadSettings(){
   var lg=document.getElementById('langSel');if(lg)lg.value=ST.lang||'en';
   var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#0A0A12';
   var rl=document.getElementById('remLead');if(rl)rl.value=String(ST.remindLead!=null?ST.remindLead:60);
+  var cst=document.getElementById('calSyncTog');if(cst)cst.classList.toggle('on',!!ST.calSync);
   updateInAppUI();
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
@@ -1545,25 +1556,85 @@ function updateInAppUI(){
     d.textContent=ST.inApp?(granted?(LANG==='ar'?'مفعّل — إشعارات النظام':'On — system notifications'):(LANG==='ar'?'مفعّل — تنبيه داخل التطبيق':'On — in-app banner')):(LANG==='ar'?'أعلمني عندما يكون التطبيق مفتوحاً':'Notify me when the app is open / installed');
   }
 }
+// Static sync script: installed once in Scriptable. Each run receives the
+// fresh schedule from the app (x-callback-url query param), wipes the dedicated
+// calendar in-range, recreates events, and reschedules notification alarms.
 function buildScriptable(){
-  var lead=parseInt(ST.remindLead!=null?ST.remindLead:60,10);
-  var shMap={};Object.keys(SH).forEach(function(k){var s=SH[k];shMap[k]={n:s.n,e:s.e,s:s.s,f:s.f};});
-  var ar=(LANG==='ar');
-  var cfg={SH:shMap,pat:ST.pat,cs:ST.cs,tp:(ST.tp||[]).map(function(x){return {s:x.s,e:x.e,p:x.p};}),ov:ST.ov||{},lead:lead,days:21,
-    title:(ar?'تذكير وردية':'Shift reminder'),startWord:(ar?'يبدأ':'starts'),okWord:(ar?'حسناً':'OK'),doneWord:(ar?'تنبيهات مجدولة':'reminders scheduled')};
   var L=[];
-  L.push('// ShiftCal auto-reminders (Scriptable) — generated '+dk(new Date()));
-  L.push('const CFG='+JSON.stringify(cfg)+';');
-  L.push('function pd(s){let p=s.split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}');
-  L.push('function dk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}');
-  L.push('function rs(ds){if(CFG.ov[ds])return CFG.ov[ds];let d=pd(ds);for(let t of CFG.tp){let ts=pd(t.s),te=pd(t.e);if(d>=ts&&d<=te){let f=Math.round((d-ts)/86400000);let l=t.p.length;return t.p[((f%l)+l)%l];}}let st=pd(CFG.cs);let f=Math.round((d-st)/86400000);let l=CFG.pat.length;return CFG.pat[((f%l)+l)%l];}');
-  L.push('async function main(){let pend=await Notification.allPending();for(let p of pend){if(p.identifier&&p.identifier.indexOf("shiftcal-")===0){p.remove();}}let now=new Date();let c=0;for(let i=0;i<CFG.days;i++){let d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);let ds=dk(d);let sk=rs(ds);let sh=CFG.SH[sk];if(!sh||!sh.s){continue;}let pp=sh.s.split(":");let start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),Number(pp[0]),Number(pp[1]));let trig=new Date(start.getTime()-CFG.lead*60000);if(trig<=now){continue;}let n=new Notification();n.identifier="shiftcal-"+ds;n.title=CFG.title;n.body=(sh.e?sh.e+" ":"")+sh.n+" • "+sh.s+" "+CFG.startWord;n.sound="default";n.setTriggerDate(trig);await n.schedule();c++;}return c;}');
+  L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
   L.push('(async()=>{');
-  L.push('let count=await main();');
-  L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title=CFG.title;a.message=count+" "+CFG.doneWord;a.addAction(CFG.okWord);await a.present();}');
+  L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
+  L.push('let raw=p.data||Pasteboard.paste();');
+  L.push('let D;try{D=JSON.parse(raw);}catch(e){let a=new Alert();a.title="ShiftCal";a.message="No schedule data. Run it from the app (Sync now).";a.addAction("OK");await a.present();Script.complete();return;}');
+  L.push('let cal;try{cal=await Calendar.forEventsByTitle(D.cal);}catch(e){cal=null;}');
+  L.push('if(!cal){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();Script.complete();return;}');
+  L.push('let start=new Date();start.setHours(0,0,0,0);');
+  L.push('let end=new Date(start.getTime()+(D.days+2)*86400000);');
+  L.push('let old=await CalendarEvent.between(start,end,[cal]);');
+  L.push('for(let e of old){try{e.remove();}catch(x){}}');
+  L.push('let made=0;');
+  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let fp=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let ed=new Date(dp[0],dp[1]-1,dp[2],fp[0],fp[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";ce.save();made++;}');
+  L.push('let pend=await Notification.allPending();for(let n of pend){if(n.identifier&&n.identifier.indexOf("shiftcal-")===0)n.remove();}');
+  L.push('let now=new Date();let alarms=0;');
+  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
+  L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal";a.message=made+" events, "+alarms+" alarms";a.addAction("OK");await a.present();}');
   L.push('Script.complete();');
   L.push('})();');
   return L.join('\n');
+}
+// Build the compact payload the sync script consumes: resolved events for N days.
+function buildSyncPayload(){
+  var lead=parseInt(ST.remindLead!=null?ST.remindLead:60,10);
+  var days=45,ev=[],now=new Date();
+  for(var i=0;i<days;i++){
+    var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
+    var ds=dk(d);var sk=getShift(ds);var sh=SH[sk];
+    if(!sh||!sh.s)continue;
+    var isPH=!!ST.ph[ds];var ot=isOT(ds);
+    var title=(sh.e?sh.e+' ':'')+sh.n+(ot?(LANG==='ar'?' (إضافي)':' (OT)'):'')+(isPH?(LANG==='ar'?' (عطلة)':' (PH)'):'');
+    ev.push([ds,title,sh.s,sh.f]);
+  }
+  return {cal:ST.calName||'ShiftCal',days:days,lead:lead,title:(LANG==='ar'?'تذكير وردية':'Shift reminder'),ev:ev};
+}
+function syncNow(){
+  var payload=buildSyncPayload();
+  if(!payload.ev.length){toast(LANG==='ar'?'لا ورديات قادمة':'No upcoming shifts');return;}
+  ST.lastSync=schedHash();savST();
+  var back=location.origin+location.pathname;
+  var url='scriptable:///x-callback-url/run?scriptName=ShiftCal'
+    +'&x-success='+encodeURIComponent(back)
+    +'&data='+encodeURIComponent(JSON.stringify(payload));
+  location.href=url;
+}
+// Hash of everything that affects the resolved schedule — used to auto-sync only on real changes.
+function schedHash(){
+  var s=JSON.stringify([ST.cs,ST.pat,ST.ov,ST.tp,ST.ph,ST.remindLead,ST.calName]);
+  var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
+  return String(h);
+}
+var _syncChipT=null;
+function maybeOfferSync(){
+  if(!ST.calSync)return;
+  if(ST.lastSync===schedHash())return;
+  showSyncChip();
+}
+function showSyncChip(){
+  var c=document.getElementById('syncChip');
+  if(!c){
+    c=document.createElement('div');c.id='syncChip';
+    c.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 78px);z-index:590;background:linear-gradient(135deg,#6366F1,#10B981);color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer';
+    c.onclick=function(){c.style.display='none';syncNow();};
+    document.body.appendChild(c);
+  }
+  c.textContent=LANG==='ar'?'🔄 تحديث تنبيهات التقويم':'🔄 Update calendar reminders';
+  c.style.display='block';
+  clearTimeout(_syncChipT);_syncChipT=setTimeout(function(){c.style.display='none';},15000);
+}
+function togCalSync(){
+  ST.calSync=!ST.calSync;savST();
+  var tg=document.getElementById('calSyncTog');if(tg)tg.classList.toggle('on',!!ST.calSync);
+  toast(t('Saved ✓'));
+  if(ST.calSync)maybeOfferSync();
 }
 function scriptFallback(txt){var ta=document.getElementById('scriptTA');if(ta){ta.style.display='block';ta.value=txt;ta.focus();try{ta.setSelectionRange(0,txt.length);}catch(e){}}toast(LANG==='ar'?'انسخ النص يدوياً بالأسفل':'Select & copy the text below');}
 function copyScriptable(){
@@ -1574,8 +1645,8 @@ function copyScriptable(){
 }
 function showScriptableHelp(){
   alert(LANG==='ar'
-    ?'التنبيهات التلقائية عبر Scriptable (مرة واحدة للإعداد):\n\n1) ثبّت تطبيق Scriptable المجاني من App Store.\n2) هنا: اضغط "نسخ سكربت Scriptable".\n3) افتح Scriptable → (+) سكربت جديد → الصق النص → سمِّه ShiftCal → شغّله مرة واحدة واسمح بالإشعارات.\n4) التشغيل التلقائي: تطبيق الاختصارات (Shortcuts) ← Automation ← أتمتة شخصية ← "وقت من اليوم" (مثلاً 5:00 ص يومياً) ← Run Script ← اختر ShiftCal ← أوقف "اسأل قبل التشغيل".\n\nسيعيد جدولة تنبيهات 3 أسابيع قادمة يومياً تلقائياً. إن غيّرت نمط الدوام أو التعديلات، انسخ السكربت مرة أخرى.'
-    :'Automatic reminders via Scriptable (one-time setup):\n\n1) Install the free Scriptable app from the App Store.\n2) Here: tap "Copy Scriptable script".\n3) Open Scriptable → (+) New Script → paste → name it ShiftCal → run once and allow notifications.\n4) Automation: Shortcuts app → Automation → New Personal Automation → "Time of Day" (e.g. 5:00 AM daily) → Run Script → choose ShiftCal → turn OFF "Ask Before Running".\n\nIt re-schedules the next 3 weeks of shift alarms every day, automatically. If you change your base pattern/overrides, copy the script again.');
+    ?'مزامنة التقويم التلقائية (إعداد مرة واحدة):\n\n1) ثبّت تطبيق Scriptable المجاني من App Store.\n2) في تطبيق التقويم بآيفون: أنشئ تقويماً جديداً باسم ShiftCal (التقويمات ← إضافة تقويم).\n3) هنا: اضغط "نسخ سكربت المزامنة" → افتح Scriptable → (+) سكربت جديد → الصق → سمِّه بالضبط: ShiftCal.\n4) فعّل "تحديث التقويم تلقائياً" هنا.\n\nبعدها: أي تعديل على جدولك يُظهر زر "🔄 تحديث تنبيهات التقويم" — بضغطة واحدة يفتح Scriptable، يحذف كل أحداث تقويم ShiftCal ويعيد كتابتها مع منبّهاتها من جدولك الجديد، ثم يرجع للتطبيق تلقائياً.\n\nملاحظة: iOS يمنع صفحات الويب من فتح تطبيق آخر بدون لمسة منك، لذا الضغطة الواحدة هي الحد الأدنى الممكن.'
+    :'Automatic calendar sync (one-time setup):\n\n1) Install the free Scriptable app.\n2) In the iPhone Calendar app: create a new calendar named ShiftCal (Calendars → Add Calendar).\n3) Here: tap "Copy sync script" → open Scriptable → (+) New Script → paste → name it exactly: ShiftCal.\n4) Turn ON "Auto-update calendar" here.\n\nThen: any schedule edit shows a "🔄 Update calendar reminders" button — one tap opens Scriptable, which deletes all ShiftCal-calendar events and rewrites them with alarms from your new schedule, then returns to the app automatically.\n\nNote: iOS requires one tap to open another app from a web page, so a single tap is the minimum possible.');
 }
 
 var EMOJIS=['🌅','🌄','☀️','🌤️','⛅','🌞','🌙','🌛','🌜','🌚','⭐','🌟','✨','🔆','🌃','🌌','🛌','😴','💤','🛏️','🏥','💼','🩺','💊','🚑','🧑‍⚕️','👮','🚒','🚓','📚','📖','✏️','🎓','🔑','🗝️','🚪','🏖️','🌴','✈️','🧳','🏝️','⚓','🤒','🤕','🤧','😷','🩹','🩺','📅','📆','🕐','🕒','⏰','⏱️','⌚','💰','💵','🪙','🏠','🏢','🚗','🚌','🏭','🔧','😀','🙂','😎','🥳','🔥','⚡','💪','⭕','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🟠','🟡','🟢','🔵','🟣','🔴','⚪','⚫'];
