@@ -479,9 +479,17 @@ Object.keys(SBG).forEach(function(k){DEF_SBGv[k]=SBG[k];});
 function darkenHex(hex){hex=String(hex).replace('#','');if(hex.length===3)hex=hex.split('').map(function(c){return c+c;}).join('');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);var f=0.13;return 'rgb('+Math.round(r*f)+','+Math.round(g*f)+','+Math.round(b*f)+')';}
 function toHex(c){if(!c)return '#4B5563';c=String(c).trim();if(c[0]==='#'){if(c.length===4)return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return c.slice(0,7);}var m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(m)return '#'+[m[1],m[2],m[3]].map(function(x){return ('0'+parseInt(x,10).toString(16)).slice(-2);}).join('');return '#4B5563';}
 function mixCol(c1,c2,t){var a=hexToRgb(c1),b=hexToRgb(c2);return 'rgb('+Math.round(a.r*t+b.r*(1-t))+','+Math.round(a.g*t+b.g*(1-t))+','+Math.round(a.b*t+b.b*(1-t))+')';}
-function lumOf(hex){var c=hexToRgb(toHex(hex));return (0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;}
-// Return a version of `col` that stays visible on background `bg`.
-function accentOn(col,bg){var bl=lumOf(bg),cl=lumOf(col);if(bl>0.5)return cl>0.5?mixCol(toHex(col),'#000000',0.5):toHex(col);return cl<0.42?mixCol(toHex(col),'#FFFFFF',0.55):toHex(col);}
+function lumOf(hex){var c=hexToRgb(toHex(hex));function ch(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}return 0.2126*ch(c.r)+0.7152*ch(c.g)+0.0722*ch(c.b);}
+function contrastRatio(l1,l2){var a=Math.max(l1,l2),b=Math.min(l1,l2);return (a+0.05)/(b+0.05);}
+// Return a version of `col` nudged toward black/white until it is clearly readable on `bg`.
+function accentOn(col,bg){
+  var bl=lumOf(bg),hex=toHex(col);
+  if(contrastRatio(lumOf(hex),bl)>=4)return hex;
+  var target=bl>0.5?'#000000':'#FFFFFF';
+  var out=hex,w=0;
+  while(w<0.95){w+=0.1;out=mixCol(target,hex,w);if(contrastRatio(lumOf(out),bl)>=4.2)break;}
+  return out;
+}
 // Cell tints derive from the shift colour blended into the current background so they always match the theme.
 function recomputeSBG(){var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#0A0A12';Object.keys(SC).forEach(function(k){SBG[k]=mixCol(SC[k],bg,0.16);});}
 function applyShiftCustom(){
@@ -618,8 +626,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.05-26';
-var APP_NOTE='ترجمة صفحة الإضافي والإعدادات بالكامل، تباين أفضل / Overtime page & config fully translated, better contrast.';
+var APP_VER='2026.07.05-27';
+var APP_NOTE='تباين ألوان محسّن — لا نص خفي / Stronger colour contrast so no text is invisible.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -801,7 +809,7 @@ function render(){
   for(var j=1;j<=ep;j++)gr.appendChild(mkCell(new Date(VY,VM+1,j),true,tds));
   renderStrip(tds);
   var legEl=document.getElementById('leg');legEl.innerHTML='';
-  Object.keys(used).forEach(function(k){var s=SH[k];var col=SC[k]||'#4B5563';legEl.innerHTML+='<div class="li"><div class="ld" style="background:'+col+'"></div>'+s.n+'</div>';});
+  Object.keys(used).forEach(function(k){var s=SH[k];var col=SC[k]||'#4B5563';legEl.innerHTML+='<div class="li"><div class="ld" style="background:'+col+';box-shadow:0 0 0 1px rgba(128,128,128,.4)"></div>'+s.n+'</div>';});
   legEl.innerHTML+='<div class="li" style="margin-left:auto;color:#3A3A55">v'+APP_VER+'</div>';
 }
 
@@ -935,7 +943,7 @@ function renderSG(gId,cur){
     var s=SH[k];var isSel=k===cur;
     var el=document.createElement('div');
     el.className='so'+(isSel?' sl':'');
-    el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
+    el.style.background=SBG[k]||'#111118';el.style.color=accentOn(SC[k]||'#4B5563',SBG[k]||'#111118');
     if(isSel)el.style.borderColor=SC[k]||'#818CF8';
     el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
     el.addEventListener('click',function(ev){ev.stopPropagation();editSk=k;renderSG(gId,k);updateOTRow(k);updateRateRow();if(dblTap('shGrid',k))applyOv();});
@@ -1167,7 +1175,7 @@ function renderMultiGrid(cur){
   Object.keys(SH).forEach(function(k){
     var s=SH[k];var isSel=k===cur;
     var el=document.createElement('div');el.className='so'+(isSel?' sl':'');
-    el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
+    el.style.background=SBG[k]||'#111118';el.style.color=accentOn(SC[k]||'#4B5563',SBG[k]||'#111118');
     if(isSel)el.style.borderColor=SC[k]||'#818CF8';
     el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
     el.addEventListener('click',function(ev){ev.stopPropagation();mSelSk=k;renderMultiGrid(k);if(dblTap('multiGrid',k))applyMulti();});
@@ -1352,14 +1360,14 @@ function applyImport(){
 var ePat=[],eLen=12;
 function openPat(){ePat=[].concat(ST.pat);eLen=ePat.length;document.getElementById('cyLen').textContent=eLen;renderPD();document.getElementById('patOv').classList.add('op');}
 function stepCy(d){eLen=Math.max(1,Math.min(60,eLen+d));while(ePat.length<eLen)ePat.push('off');while(ePat.length>eLen)ePat.pop();document.getElementById('cyLen').textContent=eLen;renderPD();}
-function renderPD(){var c=document.getElementById('patDays');c.innerHTML='';ePat.forEach(function(k,i){var el=document.createElement('div');el.className='pdi';el.style.background=SBG[k]||'#111118';el.style.borderColor=SC[k]||'#4B5563';el.innerHTML='<div class="pdn" style="color:'+(SC[k]||'#4B5563')+'">'+(i+1)+'</div><div class="pde">'+(SH[k]?SH[k].e:'?')+'</div>';el.onclick=(function(idx){return function(){openPD(idx,'base');};})(i);c.appendChild(el);});}
+function renderPD(){var c=document.getElementById('patDays');c.innerHTML='';ePat.forEach(function(k,i){var el=document.createElement('div');el.className='pdi';el.style.background=SBG[k]||'#111118';el.style.borderColor=SC[k]||'#4B5563';el.innerHTML='<div class="pdn" style="color:'+accentOn(SC[k]||'#4B5563',SBG[k]||'#111118')+'">'+(i+1)+'</div><div class="pde">'+(SH[k]?SH[k].e:'?')+'</div>';el.onclick=(function(idx){return function(){openPD(idx,'base');};})(i);c.appendChild(el);});}
 function savePat(){ST.pat=[].concat(ePat);savST();render();closeOv('patOv');toast('Pattern saved ✓');}
 
 // ── TEMP PERIOD ───────────────────────────────────────────────────────────────
 var tpEP=[],tpEL=4,tpEId=null;
 function openTpSh(id){tpEId=id;var ex=id?ST.tp.filter(function(t){return t.id===id;})[0]:null;document.getElementById('tpT').textContent=t(ex?'Edit Period':'New Period Pattern');document.getElementById('tpNm').value=ex?ex.nm:'';document.getElementById('tpSt').value=ex?ex.s:dk(new Date());document.getElementById('tpEn').value=ex?ex.e:'';tpEP=ex?[].concat(ex.p):['morning','morning','off','off'];tpEL=tpEP.length;document.getElementById('tcLen').textContent=tpEL;renderTPD();document.getElementById('tpOv').classList.add('op');}
 function stepTC(d){tpEL=Math.max(1,Math.min(60,tpEL+d));while(tpEP.length<tpEL)tpEP.push('off');while(tpEP.length>tpEL)tpEP.pop();document.getElementById('tcLen').textContent=tpEL;renderTPD();}
-function renderTPD(){var c=document.getElementById('tpPD');c.innerHTML='';tpEP.forEach(function(k,i){var el=document.createElement('div');el.className='pdi';el.style.background=SBG[k]||'#111118';el.style.borderColor=SC[k]||'#4B5563';el.innerHTML='<div class="pdn" style="color:'+(SC[k]||'#4B5563')+'">'+(i+1)+'</div><div class="pde">'+(SH[k]?SH[k].e:'?')+'</div>';el.onclick=(function(idx){return function(){openPD(idx,'tp');};})(i);c.appendChild(el);});}
+function renderTPD(){var c=document.getElementById('tpPD');c.innerHTML='';tpEP.forEach(function(k,i){var el=document.createElement('div');el.className='pdi';el.style.background=SBG[k]||'#111118';el.style.borderColor=SC[k]||'#4B5563';el.innerHTML='<div class="pdn" style="color:'+accentOn(SC[k]||'#4B5563',SBG[k]||'#111118')+'">'+(i+1)+'</div><div class="pde">'+(SH[k]?SH[k].e:'?')+'</div>';el.onclick=(function(idx){return function(){openPD(idx,'tp');};})(i);c.appendChild(el);});}
 function saveTp(){var nm=document.getElementById('tpNm').value.trim()||'Period';var s=document.getElementById('tpSt').value,e=document.getElementById('tpEn').value;if(!s||!e){alert('Set dates.');return;}var entry={id:tpEId||String(Date.now()),nm:nm,s:s,e:e,p:[].concat(tpEP)};if(tpEId)ST.tp=ST.tp.map(function(t){return t.id===tpEId?entry:t;});else ST.tp.push(entry);savST();render();renderTpList();closeOv('tpOv');toast('Period saved ✓');}
 function renderTpList(){var c=document.getElementById('tpList');if(!c)return;if(!ST.tp.length){c.innerHTML='<div style="font-size:13px;color:var(--mu);padding:4px 0 8px">No temporary periods yet.</div>';return;}c.innerHTML=ST.tp.map(function(t){var pat=t.p.slice(0,10).map(function(k){return SH[k]?SH[k].e:'?';}).join('');var more=t.p.length>10?' +'+(t.p.length-10):'';return'<div class="tp"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:14px;font-weight:700">'+t.nm+'</div><div style="display:flex;gap:4px"><button onclick="openTpSh(\''+t.id+'\')" style="background:none;border:none;color:var(--mu);font-size:15px;cursor:pointer;padding:4px">&#9998;</button><button onclick="delTp(\''+t.id+'\')" style="background:none;border:none;color:var(--sick);font-size:15px;cursor:pointer;padding:4px">&#10005;</button></div></div><div style="font-size:12px;color:var(--mu);margin-top:3px">'+t.s+' &rarr; '+t.e+' &middot; '+t.p.length+'-day cycle</div><div style="font-size:15px;margin-top:5px;letter-spacing:2px">'+pat+more+'</div></div>';}).join('');}
 function delTp(id){if(confirm('Delete?')){ST.tp=ST.tp.filter(function(t){return t.id!==id;});savST();render();renderTpList();}}
@@ -1372,7 +1380,7 @@ function renderSG2(gId,cur){
   Object.keys(SH).forEach(function(k){
     var s=SH[k];var isSel=k===cur;
     var el=document.createElement('div');el.className='so'+(isSel?' sl':'');
-    el.style.background=SBG[k]||'#111118';el.style.color=SC[k]||'#4B5563';
+    el.style.background=SBG[k]||'#111118';el.style.color=accentOn(SC[k]||'#4B5563',SBG[k]||'#111118');
     if(isSel)el.style.borderColor=SC[k]||'#818CF8';
     el.innerHTML='<div class="oe">'+s.e+'</div><div class="on">'+s.n+'</div><div class="ot2">'+(s.s?s.s+'–'+s.f:'No shift')+'</div>';
     el.addEventListener('click',function(ev){ev.stopPropagation();if(pdC==='tp'){tpEP[pdI]=k;renderTPD();}else{ePat[pdI]=k;renderPD();}renderSG2(gId,k);if(dblTap('pdGrid',k))closeOv('pdOv');});
