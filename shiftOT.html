@@ -672,8 +672,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-41';
-var APP_NOTE='سكربت v5: مسح كامل للتقويم قبل الكتابة + زر التحديث أعلى التطبيق / Script v5: full calendar wipe before rewrite + sync button at the top.';
+var APP_VER='2026.07.06-42';
+var APP_NOTE='مزامنة صامتة: بلا نافذة سفلية وبلا رسائل — يرجع للتطبيق فوراً / Silent sync: no bottom bar, no popups — returns to the app instantly.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1563,7 +1563,7 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v5";');
+  L.push('const VER="v6";');
   L.push('(async()=>{');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
   L.push('let fm=FileManager.local();');
@@ -1593,9 +1593,10 @@ function buildScriptable(){
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
   L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
   L.push('let sum="wiped "+wiped+" • wrote "+made+" • alarms "+alarms+" • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
-  L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal ✓ "+VER;a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"");a.addAction("OK");await a.present();}');
-  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ✓";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}');
-  L.push('Script.complete();');
+  L.push('let inApp=(typeof config!=="undefined"&&config.runsInApp);');
+  L.push('if(dl&&inApp){Script.complete();App.close();}'); // launched from the app: fully silent, close & return
+  L.push('else if(inApp){let a=new Alert();a.title="ShiftCal ✓ "+VER;a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"");a.addAction("OK");await a.present();Script.complete();}');
+  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ✓";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
   L.push('})();');
   return L.join('\n');
 }
@@ -1622,8 +1623,8 @@ function syncNow(){
   var payload=buildSyncPayload();
   if(!payload.ev.length){toast(LANG==='ar'?'لا ورديات قادمة':'No upcoming shifts');return;}
   ST.lastSync=schedHash();savST();
-  var chip=document.getElementById('syncChip');if(chip)chip.style.display='none';
   updateSyncDot();
+  _syncAt=Date.now();
   var json=JSON.stringify(payload);
   // Simple documented run URL; data travels in the query only (no clipboard — no paste prompt).
   openURL('scriptable:///run/ShiftCal?data='+encodeURIComponent(json));
@@ -1634,28 +1635,12 @@ function schedHash(){
   var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
   return String(h);
 }
-var _syncChipT=null;
+var _syncChipT=null,_syncAt=0;
 function updateSyncDot(){
   var d=document.getElementById('syncDot');
   if(d)d.style.display=(ST.lastSync!==schedHash())?'block':'none';
 }
-function maybeOfferSync(){
-  updateSyncDot();
-  if(!ST.calSync)return;
-  if(ST.lastSync===schedHash())return;
-  showSyncChip();
-}
-function showSyncChip(){
-  var c=document.getElementById('syncChip');
-  if(!c){
-    c=document.createElement('div');c.id='syncChip';
-    c.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 78px);z-index:590;background:linear-gradient(135deg,#6366F1,#10B981);color:#fff;padding:10px 18px;border-radius:22px;font-size:13px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer';
-    c.onclick=function(){c.style.display='none';syncNow();};
-    document.body.appendChild(c);
-  }
-  c.textContent=LANG==='ar'?'🔄 تحديث تنبيهات التقويم':'🔄 Update calendar reminders';
-  c.style.display='block'; // stays until synced — the nightly automation only knows the last-synced schedule
-}
+function maybeOfferSync(){updateSyncDot();}
 function togCalSync(){
   ST.calSync=!ST.calSync;savST();
   var tg=document.getElementById('calSyncTog');if(tg)tg.classList.toggle('on',!!ST.calSync);
@@ -2016,7 +2001,11 @@ setupCalSwipe();
 checkUpdate();
 scheduleInApp();
 maybeOfferSync();
-document.addEventListener('visibilitychange',function(){if(!document.hidden){scheduleInApp();maybeOfferSync();}});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)return;
+  scheduleInApp();maybeOfferSync();
+  if(_syncAt&&Date.now()-_syncAt<120000){_syncAt=0;toast(LANG==='ar'?'تم تحديث تقويم ShiftCal ✓':'ShiftCal calendar updated ✓');}
+});
 </script>
 </body>
 </html>
