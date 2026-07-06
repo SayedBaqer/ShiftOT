@@ -671,8 +671,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-39';
-var APP_NOTE='الأتمتة تستخدم دائماً أحدث جدول (ختم زمني لكل مصدر) / Automation now always uses the newest schedule (timestamped sources).';
+var APP_VER='2026.07.06-40';
+var APP_NOTE='سكربت v4: إشعار تقرير بعد كل تشغيل أتمتة + تحقق من الحفظ / Script v4: run-report notification after every automation run + cache verification.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1562,6 +1562,7 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
+  L.push('const VER="v4";');
   L.push('(async()=>{');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
   L.push('let fm=FileManager.local();');
@@ -1574,7 +1575,8 @@ function buildScriptable(){
   L.push('if(!cands.length){let a=new Alert();a.title="ShiftCal";a.message="No schedule data reached the script (link: "+(p.data?"yes-but-bad":"empty")+"). Open the app and tap Sync now.";a.addAction("OK");await a.present();Script.complete();return;}');
   L.push('cands.sort(function(a,b){return (b.d.seq||0)-(a.d.seq||0);});');
   L.push('let D=cands[0].d;let src=cands[0].s;');
-  L.push('if(src!=="saved"){try{fm.writeString(fp,JSON.stringify(D));}catch(x){}}');
+  L.push('let cacheOK=true;');
+  L.push('if(src!=="saved"){try{fm.writeString(fp,JSON.stringify(D));let chk=valid(fm.readString(fp));cacheOK=!!(chk&&chk.seq===D.seq);}catch(x){cacheOK=false;}}');
   L.push('let ageDays=0;if(D.ts){let tp=D.ts.split("-").map(Number);ageDays=Math.round((Date.now()-new Date(tp[0],tp[1]-1,tp[2]).getTime())/86400000);}');
   L.push('let cal;try{cal=await Calendar.forEventsByTitle(D.cal);}catch(e){cal=null;}');
   L.push('if(!cal){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();Script.complete();return;}');
@@ -1588,7 +1590,9 @@ function buildScriptable(){
   L.push('let now=new Date();let alarms=0;');
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
   L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
-  L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal ✓";a.message=made+" events, "+alarms+" alarms\\nsource: "+src+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"");a.addAction("OK");await a.present();}');
+  L.push('let sum=made+" events, "+alarms+" alarms • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
+  L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal ✓ "+VER;a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"");a.addAction("OK");await a.present();}');
+  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ✓";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}');
   L.push('Script.complete();');
   L.push('})();');
   return L.join('\n');
@@ -1663,8 +1667,8 @@ function copyScriptable(){
 }
 function showScriptableHelp(){
   alert(LANG==='ar'
-    ?'مزامنة التقويم التلقائية (إعداد مرة واحدة):\n\n1) ثبّت تطبيق Scriptable المجاني من App Store.\n2) في تطبيق التقويم: التقويمات ← إضافة تقويم ← سمِّه: ShiftCal.\n3) هنا: "نسخ سكربت المزامنة" → افتح Scriptable → (+) → الصق → سمِّه بالضبط: ShiftCal → شغّله مرة واسمح بالإشعارات والتقويم.\n4) فعّل "تحديث التقويم تلقائياً" واضغط "مزامنة الآن" مرة.\n\n— الأتمتة اليومية (iOS 17 حتى 26) —\n5) افتح تطبيق الاختصارات (Shortcuts).\n6) تبويب "الأتمتة" (Automation) بالأسفل ← اضغط (+).\n7) اختر "وقت من اليوم" (Time of Day).\n8) اضبط الوقت مثلاً 9:00 مساءً ← التكرار: يومياً.\n9) بالأسفل اختر "التشغيل فوراً" (Run Immediately) بدل "السؤال قبل التشغيل"، ويفضَّل إيقاف "الإشعار عند التشغيل".\n10) اضغط "التالي" ← اختر "أتمتة فارغة جديدة" (New Blank Automation).\n11) "إضافة إجراء" ← ابحث: Scriptable ← اختر "Run Script".\n12) اضغط كلمة Script الباهتة في الإجراء ← اختر ShiftCal (اترك Run In App مطفأ ليعمل بالخلفية) ← "تم".\n\nالآن كل ليلة يتحدّث التقويم والمنبّهات تلقائياً من آخر جدول محفوظ — حتى بدون فتح التطبيق. وزر "🔄" يظهر عند أي تعديل للمزامنة الفورية بضغطة.'
-    :'Automatic calendar sync (one-time setup):\n\n1) Install the free Scriptable app.\n2) iPhone Calendar app: Calendars → Add Calendar → name it: ShiftCal.\n3) Here: "Copy sync script" → open Scriptable → (+) → paste → name it exactly: ShiftCal → run once, allow notifications & calendar access.\n4) Turn ON "Auto-update calendar" and tap "Sync calendar now" once.\n\n— Daily automation (iOS 17 through 26) —\n5) Open the Shortcuts app.\n6) "Automation" tab at the bottom → tap (+).\n7) Choose "Time of Day".\n8) Set the time, e.g. 9:00 PM → Repeat: Daily.\n9) Below, select "Run Immediately" (instead of "Ask Before Running"); optionally turn off "Notify When Run".\n10) Tap "Next" → choose "New Blank Automation".\n11) "Add Action" → search: Scriptable → pick "Run Script".\n12) Tap the faded word "Script" in the action → choose ShiftCal (leave "Run In App" OFF so it runs in the background) → "Done".\n\nFrom then on, every night the calendar & alarms refresh automatically from the last saved schedule — even if you never open the app. The "🔄" button still appears after any edit for instant one-tap sync.');
+    ?'مزامنة التقويم التلقائية (إعداد مرة واحدة):\n\n1) ثبّت تطبيق Scriptable المجاني من App Store.\n2) في تطبيق التقويم: التقويمات ← إضافة تقويم ← سمِّه: ShiftCal.\n3) هنا: "نسخ سكربت المزامنة" → افتح Scriptable → (+) → الصق → سمِّه بالضبط: ShiftCal → شغّله مرة واسمح بالإشعارات والتقويم.\n4) فعّل "تحديث التقويم تلقائياً" واضغط "مزامنة الآن" مرة.\n\n— الأتمتة اليومية (iOS 17 حتى 26) —\n5) افتح تطبيق الاختصارات (Shortcuts).\n6) تبويب "الأتمتة" (Automation) بالأسفل ← اضغط (+).\n7) اختر "وقت من اليوم" (Time of Day).\n8) اضبط الوقت مثلاً 9:00 مساءً ← التكرار: يومياً.\n9) بالأسفل اختر "التشغيل فوراً" (Run Immediately) بدل "السؤال قبل التشغيل"، ويفضَّل إيقاف "الإشعار عند التشغيل".\n10) اضغط "التالي" ← اختر "أتمتة فارغة جديدة" (New Blank Automation).\n11) "إضافة إجراء" ← ابحث: Scriptable ← اختر "Run Script".\n12) اضغط كلمة Script الباهتة في الإجراء ← اختر ShiftCal (اترك Run In App مطفأ ليعمل بالخلفية) ← "تم".\n\nالآن كل ليلة يتحدّث التقويم والمنبّهات تلقائياً من آخر جدول محفوظ — حتى بدون فتح التطبيق. وزر "🔄" يظهر عند أي تعديل للمزامنة الفورية بضغطة.\n\n⚠️ استكشاف الأخطاء: بعد كل تشغيل يظهر إشعار/رسالة "ShiftCal v4 ✓ …" مع تاريخ الجدول المستخدم (sched). إن لم تظهر v4 أو ظهر تاريخ قديم: احذف كل سكربتات ShiftCal القديمة/المكررة في Scriptable وأبقِ واحداً فقط بالنسخة الجديدة، وتأكد أن الأتمتة في الاختصارات تشير إليه.'
+    :'Automatic calendar sync (one-time setup):\n\n1) Install the free Scriptable app.\n2) iPhone Calendar app: Calendars → Add Calendar → name it: ShiftCal.\n3) Here: "Copy sync script" → open Scriptable → (+) → paste → name it exactly: ShiftCal → run once, allow notifications & calendar access.\n4) Turn ON "Auto-update calendar" and tap "Sync calendar now" once.\n\n— Daily automation (iOS 17 through 26) —\n5) Open the Shortcuts app.\n6) "Automation" tab at the bottom → tap (+).\n7) Choose "Time of Day".\n8) Set the time, e.g. 9:00 PM → Repeat: Daily.\n9) Below, select "Run Immediately" (instead of "Ask Before Running"); optionally turn off "Notify When Run".\n10) Tap "Next" → choose "New Blank Automation".\n11) "Add Action" → search: Scriptable → pick "Run Script".\n12) Tap the faded word "Script" in the action → choose ShiftCal (leave "Run In App" OFF so it runs in the background) → "Done".\n\nFrom then on, every night the calendar & alarms refresh automatically from the last saved schedule — even if you never open the app. The "🔄" button still appears after any edit for instant one-tap sync.\n\n⚠️ Troubleshooting: after every run you get a "ShiftCal v4 ✓ …" message/notification showing which schedule date (sched) was used. If you do not see v4, or the sched date is old: delete ALL old/duplicate ShiftCal scripts in Scriptable, keep only one with the new version, and make sure the Shortcuts automation points to it.');
 }
 
 var EMOJIS=['🌅','🌄','☀️','🌤️','⛅','🌞','🌙','🌛','🌜','🌚','⭐','🌟','✨','🔆','🌃','🌌','🛌','😴','💤','🛏️','🏥','💼','🩺','💊','🚑','🧑‍⚕️','👮','🚒','🚓','📚','📖','✏️','🎓','🔑','🗝️','🚪','🏖️','🌴','✈️','🧳','🏝️','⚓','🤒','🤕','🤧','😷','🩹','🩺','📅','📆','🕐','🕒','⏰','⏱️','⌚','💰','💵','🪙','🏠','🏢','🚗','🚌','🏭','🔧','😀','🙂','😎','🥳','🔥','⚡','💪','⭕','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🟠','🟡','🟢','🔵','🟣','🔴','⚪','⚫'];
