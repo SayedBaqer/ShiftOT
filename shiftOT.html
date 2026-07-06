@@ -672,8 +672,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-43';
-var APP_NOTE='سكربت v7: تخزين مزدوج (محلي+iCloud) لإصلاح الأتمتة + دليل اختصار قابل للاختبار / Script v7: dual local+iCloud storage to fix automation + testable-shortcut guide.';
+var APP_VER='2026.07.06-44';
+var APP_NOTE='سكربت v8: تخزين Keychain مشترك يُصلح الأتمتة نهائياً + إشعار فشل بدل الصمت / Script v8: shared Keychain storage fixes automation + failure notification instead of silence.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1563,7 +1563,8 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v7";');
+  L.push('const VER="v8";');
+  L.push('const KKEY="shiftcal-data";');
   L.push('(async()=>{');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
   L.push('// Dual storage: local + iCloud. Shortcuts/automation extensions may see a different local container, so we mirror to both and read the newest.');
@@ -1571,20 +1572,29 @@ function buildScriptable(){
   L.push('try{let l=FileManager.local();stores.push({fm:l,fp:l.joinPath(l.documentsDirectory(),"shiftcal-data.json"),lr:l.joinPath(l.documentsDirectory(),"shiftcal-lastrun.txt")});}catch(e){}');
   L.push('try{let ic=FileManager.iCloud();stores.push({fm:ic,fp:ic.joinPath(ic.documentsDirectory(),"shiftcal-data.json"),lr:ic.joinPath(ic.documentsDirectory(),"shiftcal-lastrun.txt")});}catch(e){}');
   L.push('function valid(s){if(!s)return null;s=String(s).trim();if(s[0]!=="{")return null;try{let o=JSON.parse(s);return (o&&o.ev&&o.cal)?o:null;}catch(e){return null;}}');
-  L.push('// Compare link vs every saved copy and use the NEWEST payload (seq). No clipboard — avoids the iOS paste prompt.');
+  L.push('// Compare link vs Keychain (shared app↔extension, container-proof) vs file copies. NEWEST payload (seq) wins.');
   L.push('let cands=[];let dl=valid(p.data);if(dl)cands.push({d:dl,s:"link"});');
+  L.push('try{if(Keychain.contains(KKEY)){let dk2=valid(Keychain.get(KKEY));if(dk2)cands.push({d:dk2,s:"keychain"});}}catch(e){}');
   L.push('for(let s0 of stores){try{if(s0.fm.fileExists(s0.fp)){try{await s0.fm.downloadFileFromiCloud(s0.fp);}catch(dd){}let df=valid(s0.fm.readString(s0.fp));if(df)cands.push({d:df,s:"saved"});}}catch(e){}}');
-  L.push('if(!cands.length){let a=new Alert();a.title="ShiftCal";a.message="No schedule data reached the script (link: "+(p.data?"yes-but-bad":"empty")+"). Open the app and tap Sync now.";a.addAction("OK");await a.present();Script.complete();return;}');
+  L.push('let inApp0=(typeof config!=="undefined"&&config.runsInApp);');
+  L.push('if(!cands.length){');
+  L.push('  if(inApp0){let a=new Alert();a.title="ShiftCal";a.message="No schedule data reached the script (link: "+(p.data?"yes-but-bad":"empty")+"). Open the app and tap Sync now.";a.addAction("OK");await a.present();}');
+  L.push('  else{let n=new Notification();n.identifier="shiftcal-fail";n.title="ShiftCal "+VER+" ✗";n.body="Automation ran but found no schedule data. Open the app and tap 🔄 once.";n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}');
+  L.push('  Script.complete();return;}');
   L.push('cands.sort(function(a,b){return (b.d.seq||0)-(a.d.seq||0);});');
   L.push('let D=cands[0].d;let src=cands[0].s;');
   L.push('let cacheOK=false;');
+  L.push('try{Keychain.set(KKEY,JSON.stringify(D));cacheOK=true;}catch(x){}');
   L.push('for(let s0 of stores){try{s0.fm.writeString(s0.fp,JSON.stringify(D));cacheOK=true;}catch(x){}}');
   L.push('let ctx=(typeof config!=="undefined"&&config.runsInApp)?"app":"automation";');
   L.push('let prevRun="";for(let s0 of stores){try{if(s0.fm.fileExists(s0.lr)){prevRun=s0.fm.readString(s0.lr)||"";if(prevRun)break;}}catch(e){}}');
   L.push('for(let s0 of stores){try{s0.fm.writeString(s0.lr,VER+" "+ctx+" "+new Date().toISOString().slice(0,16)+" src:"+src+" sched:"+(D.ts||"?"));}catch(x){}}');
   L.push('let ageDays=0;if(D.ts){let tp=D.ts.split("-").map(Number);ageDays=Math.round((Date.now()-new Date(tp[0],tp[1]-1,tp[2]).getTime())/86400000);}');
   L.push('let cal;try{cal=await Calendar.forEventsByTitle(D.cal);}catch(e){cal=null;}');
-  L.push('if(!cal){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();Script.complete();return;}');
+  L.push('if(!cal){');
+  L.push('  if(inApp0){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();}');
+  L.push('  else{let n=new Notification();n.identifier="shiftcal-fail";n.title="ShiftCal "+VER+" ✗";n.body="Calendar \\""+D.cal+"\\" not reachable from automation.";n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}');
+  L.push('  Script.complete();return;}');
   L.push('let start=new Date();start.setHours(0,0,0,0);');
   L.push('// Wipe the ENTIRE dedicated calendar (wide window) so no stale event can survive, then rewrite.');
   L.push('let wipeFrom=new Date(start.getTime()-90*86400000);');
