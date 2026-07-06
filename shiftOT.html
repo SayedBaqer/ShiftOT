@@ -116,6 +116,7 @@ input[type=time],input[type=number]{width:auto;}
         <button class="mb" id="nextBtn">&#8250;</button>
       </div>
       <div style="display:flex;gap:7px">
+        <button class="ib" id="syncBtn" onclick="syncNow()" title="Update calendar" style="position:relative">&#128260;<span id="syncDot" style="display:none;position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#F59E0B"></span></button>
         <button class="ib" id="todayBtn">&#9678;</button>
         <button class="ib" id="patBtn">&#9881;</button>
       </div>
@@ -671,8 +672,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-40';
-var APP_NOTE='سكربت v4: إشعار تقرير بعد كل تشغيل أتمتة + تحقق من الحفظ / Script v4: run-report notification after every automation run + cache verification.';
+var APP_VER='2026.07.06-41';
+var APP_NOTE='سكربت v5: مسح كامل للتقويم قبل الكتابة + زر التحديث أعلى التطبيق / Script v5: full calendar wipe before rewrite + sync button at the top.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1562,15 +1563,14 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v4";');
+  L.push('const VER="v5";');
   L.push('(async()=>{');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
   L.push('let fm=FileManager.local();');
   L.push('let fp=fm.joinPath(fm.documentsDirectory(),"shiftcal-data.json");');
   L.push('function valid(s){if(!s)return null;s=String(s).trim();if(s[0]!=="{")return null;try{let o=JSON.parse(s);return (o&&o.ev&&o.cal)?o:null;}catch(e){return null;}}');
-  L.push('// Check every source and use the NEWEST payload (seq timestamp) so a stale clipboard can never win.');
+  L.push('// Compare link vs saved and use the NEWEST payload (seq). No clipboard — avoids the iOS paste-permission prompt.');
   L.push('let cands=[];let dl=valid(p.data);if(dl)cands.push({d:dl,s:"link"});');
-  L.push('try{let dc=valid(Pasteboard.paste());if(dc)cands.push({d:dc,s:"clipboard"});}catch(e){}');
   L.push('if(fm.fileExists(fp)){let df=valid(fm.readString(fp));if(df)cands.push({d:df,s:"saved"});}');
   L.push('if(!cands.length){let a=new Alert();a.title="ShiftCal";a.message="No schedule data reached the script (link: "+(p.data?"yes-but-bad":"empty")+"). Open the app and tap Sync now.";a.addAction("OK");await a.present();Script.complete();return;}');
   L.push('cands.sort(function(a,b){return (b.d.seq||0)-(a.d.seq||0);});');
@@ -1581,16 +1581,18 @@ function buildScriptable(){
   L.push('let cal;try{cal=await Calendar.forEventsByTitle(D.cal);}catch(e){cal=null;}');
   L.push('if(!cal){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();Script.complete();return;}');
   L.push('let start=new Date();start.setHours(0,0,0,0);');
-  L.push('let end=new Date(start.getTime()+(D.days+2)*86400000);');
-  L.push('let old=await CalendarEvent.between(start,end,[cal]);');
-  L.push('for(let e of old){try{e.remove();}catch(x){}}');
+  L.push('// Wipe the ENTIRE dedicated calendar (wide window) so no stale event can survive, then rewrite.');
+  L.push('let wipeFrom=new Date(start.getTime()-90*86400000);');
+  L.push('let wipeTo=new Date(start.getTime()+450*86400000);');
+  L.push('let old=await CalendarEvent.between(wipeFrom,wipeTo,[cal]);');
+  L.push('let wiped=0;for(let e of old){try{e.remove();wiped++;}catch(x){}}');
   L.push('let made=0;');
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let ep=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);if(sd<start)continue;let ed=new Date(dp[0],dp[1]-1,dp[2],ep[0],ep[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";ce.save();made++;}');
   L.push('let pend=await Notification.allPending();for(let n of pend){if(n.identifier&&n.identifier.indexOf("shiftcal-")===0)n.remove();}');
   L.push('let now=new Date();let alarms=0;');
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
   L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
-  L.push('let sum=made+" events, "+alarms+" alarms • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
+  L.push('let sum="wiped "+wiped+" • wrote "+made+" • alarms "+alarms+" • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
   L.push('if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal ✓ "+VER;a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"");a.addAction("OK");await a.present();}');
   L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ✓";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}');
   L.push('Script.complete();');
@@ -1621,13 +1623,10 @@ function syncNow(){
   if(!payload.ev.length){toast(LANG==='ar'?'لا ورديات قادمة':'No upcoming shifts');return;}
   ST.lastSync=schedHash();savST();
   var chip=document.getElementById('syncChip');if(chip)chip.style.display='none';
+  updateSyncDot();
   var json=JSON.stringify(payload);
-  // Simple documented run URL; data in the query, clipboard as backup channel.
-  var url='scriptable:///run/ShiftCal?data='+encodeURIComponent(json);
-  var go=function(){openURL(url);};
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(json).then(go,go);
-  } else go();
+  // Simple documented run URL; data travels in the query only (no clipboard — no paste prompt).
+  openURL('scriptable:///run/ShiftCal?data='+encodeURIComponent(json));
 }
 // Hash of everything that affects the resolved schedule — used to auto-sync only on real changes.
 function schedHash(){
@@ -1636,7 +1635,12 @@ function schedHash(){
   return String(h);
 }
 var _syncChipT=null;
+function updateSyncDot(){
+  var d=document.getElementById('syncDot');
+  if(d)d.style.display=(ST.lastSync!==schedHash())?'block':'none';
+}
 function maybeOfferSync(){
+  updateSyncDot();
   if(!ST.calSync)return;
   if(ST.lastSync===schedHash())return;
   showSyncChip();
