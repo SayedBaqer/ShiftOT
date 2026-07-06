@@ -672,8 +672,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-44';
-var APP_NOTE='سكربت v8: تخزين Keychain مشترك يُصلح الأتمتة نهائياً + إشعار فشل بدل الصمت / Script v8: shared Keychain storage fixes automation + failure notification instead of silence.';
+var APP_VER='2026.07.06-45';
+var APP_NOTE='سكربت v9: أي خطأ يظهر برسالته الكاملة / Script v9: any error now reports itself with its full message.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1563,9 +1563,10 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v8";');
+  L.push('const VER="v9";');
   L.push('const KKEY="shiftcal-data";');
   L.push('(async()=>{');
+  L.push('try{ // global error reporter — any failure surfaces with its message');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
   L.push('// Dual storage: local + iCloud. Shortcuts/automation extensions may see a different local container, so we mirror to both and read the newest.');
   L.push('let stores=[];');
@@ -1612,6 +1613,12 @@ function buildScriptable(){
   L.push('if(dl&&inApp){Script.complete();App.close();}'); // launched from the app: fully silent, close & return
   L.push('else if(inApp){let a=new Alert();a.title="ShiftCal ✓ "+VER;a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"")+(prevRun?"\\nprev run: "+prevRun:"\\nprev run: none");a.addAction("OK");await a.present();Script.complete();}');
   L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ✓";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
+  L.push('}catch(err){');
+  L.push('  let em="ERROR: "+(err&&err.message?err.message:String(err))+(err&&err.line?" (line "+err.line+")":"");');
+  L.push('  try{if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal "+VER+" ✗";a.message=em;a.addAction("OK");await a.present();}');
+  L.push('  else{let n=new Notification();n.identifier="shiftcal-error";n.title="ShiftCal "+VER+" ✗";n.body=em;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}}catch(e2){}');
+  L.push('  Script.complete();');
+  L.push('}');
   L.push('})();');
   return L.join('\n');
 }
