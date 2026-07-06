@@ -672,8 +672,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.06-45';
-var APP_NOTE='سكربت v9: أي خطأ يظهر برسالته الكاملة / Script v9: any error now reports itself with its full message.';
+var APP_VER='2026.07.06-46';
+var APP_NOTE='سكربت v10: اختيار التقويم بمعرّفه + تحقّق بالقراءة بعد الكتابة / Script v10: calendar by identifier + read-back verification.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1563,7 +1563,7 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v9";');
+  L.push('const VER="v10";');
   L.push('const KKEY="shiftcal-data";');
   L.push('(async()=>{');
   L.push('try{ // global error reporter — any failure surfaces with its message');
@@ -1591,9 +1591,15 @@ function buildScriptable(){
   L.push('let prevRun="";for(let s0 of stores){try{if(s0.fm.fileExists(s0.lr)){prevRun=s0.fm.readString(s0.lr)||"";if(prevRun)break;}}catch(e){}}');
   L.push('for(let s0 of stores){try{s0.fm.writeString(s0.lr,VER+" "+ctx+" "+new Date().toISOString().slice(0,16)+" src:"+src+" sched:"+(D.ts||"?"));}catch(x){}}');
   L.push('let ageDays=0;if(D.ts){let tp=D.ts.split("-").map(Number);ageDays=Math.round((Date.now()-new Date(tp[0],tp[1]-1,tp[2]).getTime())/86400000);}');
-  L.push('let cal;try{cal=await Calendar.forEventsByTitle(D.cal);}catch(e){cal=null;}');
+  L.push('// Resolve calendar by stored IDENTIFIER (survives duplicates/renames); by title (modifiable only); else let the user pick once.');
+  L.push('let cal=null;let all=[];');
+  L.push('try{all=await Calendar.forEvents();}catch(e){all=[];}');
+  L.push('try{if(Keychain.contains("shiftcal-calid")){let cid=Keychain.get("shiftcal-calid");for(let c of all){if(c.identifier===cid&&c.allowsContentModifications){cal=c;break;}}}}catch(e){}');
+  L.push('if(!cal){let ms=all.filter(function(c){return c.title===D.cal&&c.allowsContentModifications;});if(ms.length)cal=ms[0];}');
+  L.push('if(!cal&&inApp0){try{let pk=await Calendar.presentPicker(false);if(pk&&pk.length)cal=pk[0];}catch(e){}}');
+  L.push('if(cal){try{Keychain.set("shiftcal-calid",cal.identifier);}catch(e){}}');
   L.push('if(!cal){');
-  L.push('  if(inApp0){let a=new Alert();a.title="ShiftCal";a.message="Create a calendar named \\""+D.cal+"\\" in the iPhone Calendar app first, then sync again.";a.addAction("OK");await a.present();}');
+  L.push('  if(inApp0){let a=new Alert();a.title="ShiftCal";a.message="No usable calendar. Create one named \\""+D.cal+"\\" in the Calendar app (an editable calendar, e.g. under iCloud), then sync again.";a.addAction("OK");await a.present();}');
   L.push('  else{let n=new Notification();n.identifier="shiftcal-fail";n.title="ShiftCal "+VER+" ✗";n.body="Calendar \\""+D.cal+"\\" not reachable from automation.";n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();}');
   L.push('  Script.complete();return;}');
   L.push('let start=new Date();start.setHours(0,0,0,0);');
@@ -1608,11 +1614,14 @@ function buildScriptable(){
   L.push('let now=new Date();let alarms=0;');
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
   L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
-  L.push('let sum="wiped "+wiped+" • wrote "+made+" • alarms "+alarms+" • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
+  L.push('// Read-back verification: count what is ACTUALLY in the calendar now.');
+  L.push('let verifyN=0;try{verifyN=(await CalendarEvent.between(start,wipeTo,[cal])).length;}catch(e){}');
+  L.push('let sum="wiped "+wiped+" • wrote "+made+" • verified "+verifyN+" in \\""+cal.title+"\\" • alarms "+alarms+" • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
   L.push('let inApp=(typeof config!=="undefined"&&config.runsInApp);');
-  L.push('if(dl&&inApp){Script.complete();App.close();}'); // launched from the app: fully silent, close & return
-  L.push('else if(inApp){let a=new Alert();a.title="ShiftCal ✓ "+VER;a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"")+(prevRun?"\\nprev run: "+prevRun:"\\nprev run: none");a.addAction("OK");await a.present();Script.complete();}');
-  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ✓";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
+  L.push('let proven=(made>0&&verifyN>0);');
+  L.push('if(dl&&inApp&&proven){Script.complete();App.close();}'); // silent only when success is PROVEN by read-back
+  L.push('else if(inApp){let a=new Alert();a.title="ShiftCal "+VER+(proven?" ✓":" ⚠️");a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"")+(prevRun?"\\nprev run: "+prevRun:"");a.addAction("OK");await a.present();Script.complete();}');
+  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+(proven?" ✓":" ⚠️");n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
   L.push('}catch(err){');
   L.push('  let em="ERROR: "+(err&&err.message?err.message:String(err))+(err&&err.line?" (line "+err.line+")":"");');
   L.push('  try{if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal "+VER+" ✗";a.message=em;a.addAction("OK");await a.present();}');
