@@ -154,13 +154,9 @@ input[type=time],input[type=number]{width:auto;}
         <div class="tg" id="linkTog" onclick="togLink()"></div>
       </div></div>
 
-      <div class="sct">Calendar Reminders</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">The app keeps a dedicated iPhone calendar (&#8220;ShiftCal&#8221;) in sync: on every schedule edit it refreshes all its events and alarms via Scriptable — delete-all &amp; rewrite, automatically.</div>
+      <div class="sct">Add to Calendar</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">One tap, no extra app needed. Adds your next 30 days of shifts (with an alarm before each) straight to your iPhone Calendar. Tap again anytime after editing your schedule to refresh matching days.</div>
       <div class="sc2">
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Auto-update calendar</div><div class="ss2">After any edit, one tap refreshes everything</div></div>
-          <div class="tg" id="calSyncTog" onclick="togCalSync()"></div>
-        </div>
         <div class="sr2" style="cursor:default">
           <div><div class="sl2">Remind before shift</div></div>
           <select id="remLead" onchange="savRemLead()" style="width:auto;padding:7px 10px">
@@ -176,6 +172,16 @@ input[type=time],input[type=number]{width:auto;}
         <div class="sr2" style="cursor:default">
           <div><div class="sl2">In-app alerts</div><div class="ss2" id="inAppDesc">Notify me when the app is open / installed</div></div>
           <div class="tg" id="inAppTog" onclick="togInApp()"></div>
+        </div>
+      </div>
+      <button class="btn bp" onclick="addToCalendarICS()">&#128197; Add to Calendar (next 30 days)</button>
+
+      <div class="sct">Automatic Sync (Scriptable, Optional)</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Advanced: a dedicated &#8220;ShiftCal&#8221; calendar kept fully in sync (old events removed, new ones written) via the free Scriptable app. Only needed if you want deletions handled automatically.</div>
+      <div class="sc2">
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">Auto-update calendar</div><div class="ss2">After any edit, one tap refreshes everything</div></div>
+          <div class="tg" id="calSyncTog" onclick="togCalSync()"></div>
         </div>
       </div>
       <button class="btn bp" onclick="syncNow()">&#128260; Sync calendar now</button>
@@ -617,6 +623,11 @@ var AR={
   'Cloud Sync (Advanced, Optional)':'مزامنة سحابية (متقدّم، اختياري)','Enable cloud sync':'تفعيل المزامنة السحابية',
   'Makes Scriptable/Shortcuts always fetch your LATEST schedule over the network, even without opening the app first. Needs your own personal GitHub token (gist-only), kept only in this browser.':'يجعل Scriptable/الاختصارات تجلب دائماً آخر جدول عبر الإنترنت، حتى بدون فتح التطبيق أولاً. يحتاج مفتاح GitHub شخصياً بك (صلاحية gist فقط)، يُحفظ في هذا المتصفح فقط.',
   'How to get a token / كيفية الحصول على المفتاح':'كيفية الحصول على المفتاح','Off':'إيقاف','On (publishing…)':'مفعّل (يُنشر...)',
+  'Add to Calendar':'إضافة إلى التقويم',
+  'One tap, no extra app needed. Adds your next 30 days of shifts (with an alarm before each) straight to your iPhone Calendar. Tap again anytime after editing your schedule to refresh matching days.':'ضغطة واحدة، بلا أي تطبيق إضافي. يضيف ورديات الـ30 يوماً القادمة (مع منبّه قبل كل واحدة) مباشرة إلى تقويم آيفون. اضغط مجدداً بعد أي تعديل لتحديث الأيام المطابقة.',
+  '📅 Add to Calendar (next 30 days)':'📅 إضافة إلى التقويم (30 يوماً قادمة)',
+  'Automatic Sync (Scriptable, Optional)':'مزامنة تلقائية (Scriptable، اختياري)',
+  'Advanced: a dedicated “ShiftCal” calendar kept fully in sync (old events removed, new ones written) via the free Scriptable app. Only needed if you want deletions handled automatically.':'متقدّم: تقويم مخصص باسم ShiftCal يبقى متزامناً بالكامل (حذف القديم وكتابة الجديد) عبر تطبيق Scriptable المجاني. مطلوب فقط إن أردت حذف الأحداث القديمة تلقائياً.',
   'Smart alerts: the app itself reminds you while it’s open, and the Scriptable automation covers you when it’s closed.':'تنبيهات ذكية: التطبيق يذكّرك أثناء فتحه، وأتمتة Scriptable تغطيك عندما يكون مغلقاً.',
   'Auto Reminders (Scriptable)':'تنبيهات تلقائية (Scriptable)','Remind before shift':'التذكير قبل الوردية',
   'Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.':'تنبيهات ورديات تلقائية على آيفون عبر تطبيق Scriptable المجاني + أتمتة يومية. الإعداد مرة واحدة، ويعيد الجدولة يومياً تلقائياً.',
@@ -688,8 +699,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-48';
-var APP_NOTE='مزامنة سحابية اختيارية (Gist خاص): Scriptable يجلب دائماً آخر جدول عبر الإنترنت / Optional cloud sync (private Gist): Scriptable always fetches your latest schedule over the network.';
+var APP_VER='2026.07.07-49';
+var APP_NOTE='إضافة إلى التقويم بضغطة واحدة بلا أي تطبيق إضافي / One-tap Add to Calendar, no extra app needed.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1727,6 +1738,52 @@ function showGistHelp(){
   alert(LANG==='ar'
     ?'الحصول على مفتاح GitHub (مرة واحدة، شخصي لك):\n\n1) من متصفح: github.com/settings/tokens\n2) "Generate new token" ← "Generate new token (classic)"\n3) الصلاحية (Scopes): فعّل "gist" فقط — لا شيء آخر.\n4) "Generate token" ← انسخ المفتاح (يبدأ بـ ghp_).\n5) هنا: الصقه في حقل "GitHub token" ← فعّل "تفعيل المزامنة السحابية".\n6) انسخ سكربت المزامنة من جديد (يحمل الآن رابط جدولك الخاص) والصقه في Scriptable.\n\nبعدها: Scriptable/الاختصار/الأتمتة تجلب دائماً آخر جدول عبر الإنترنت — حتى بدون فتح التطبيق. كل مستخدم آخر لهذا التطبيق يُنشئ مفتاحه وجدوله الخاص بمعزل تام عن غيره.\n\nملاحظة: كتابة التقويم نفسها لا تزال تحتاج فتح الهاتف (قيد iOS)، لكن الجدول المستخدَم سيكون الأحدث دائماً.'
     :'Get a GitHub token (one-time, personal to you):\n\n1) In a browser: github.com/settings/tokens\n2) "Generate new token" → "Generate new token (classic)"\n3) Scopes: enable "gist" only — nothing else.\n4) "Generate token" → copy it (starts with ghp_).\n5) Here: paste it into the "GitHub token" field → turn ON "Enable cloud sync".\n6) Copy the sync script again (it now embeds your own schedule URL) and paste it into Scriptable.\n\nAfterwards: Scriptable/Shortcut/automation always fetch your latest schedule over the network — even without opening the app. Any other user of this app creates their own token and gist, fully isolated from yours.\n\nNote: writing to the Calendar itself still needs the phone unlocked (an iOS restriction), but the schedule used will always be the freshest.');
+}
+// ── ADD TO CALENDAR (.ics, no app needed) ────────────────────────────────────
+function icsPad(n){return String(n).padStart(2,'0');}
+function icsLocal(y,mo,d,h,mi){return y+icsPad(mo+1)+icsPad(d)+'T'+icsPad(h)+icsPad(mi)+'00';}
+function icsUTCNow(){var d=new Date();return d.getUTCFullYear()+icsPad(d.getUTCMonth()+1)+icsPad(d.getUTCDate())+'T'+icsPad(d.getUTCHours())+icsPad(d.getUTCMinutes())+icsPad(d.getUTCSeconds())+'Z';}
+function icsEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');}
+function buildICSFromPayload(payload){
+  var stamp=icsUTCNow();
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ShiftCalOT//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+(LANG==='ar'?'ورديات العمل':'Work Shifts')];
+  payload.ev.forEach(function(ev){
+    var dp=ev[0].split('-').map(Number),sp=ev[2].split(':').map(Number),fp=ev[3].split(':').map(Number);
+    var y=dp[0],mo=dp[1]-1,d=dp[2];
+    var startD=new Date(y,mo,d,sp[0],sp[1]);
+    var endD=new Date(y,mo,d,fp[0],fp[1]);
+    if(endD<=startD)endD=new Date(endD.getTime()+86400000);
+    L.push('BEGIN:VEVENT');
+    L.push('UID:'+ev[0]+'-shiftcal@shiftot');
+    L.push('DTSTAMP:'+stamp);
+    L.push('DTSTART:'+icsLocal(startD.getFullYear(),startD.getMonth(),startD.getDate(),startD.getHours(),startD.getMinutes()));
+    L.push('DTEND:'+icsLocal(endD.getFullYear(),endD.getMonth(),endD.getDate(),endD.getHours(),endD.getMinutes()));
+    L.push('SUMMARY:'+icsEsc(ev[1]));
+    L.push('DESCRIPTION:'+icsEsc(ev[2]+' - '+ev[3]));
+    if(payload.lead!=null){
+      L.push('BEGIN:VALARM');
+      L.push('ACTION:DISPLAY');
+      L.push('DESCRIPTION:'+icsEsc(ev[1]));
+      L.push('TRIGGER:'+(payload.lead>0?('-PT'+payload.lead+'M'):'PT0M'));
+      L.push('END:VALARM');
+    }
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
+}
+function addToCalendarICS(){
+  var payload=buildSyncPayload();
+  if(!payload.ev.length){toast(LANG==='ar'?'لا ورديات قادمة':'No upcoming shifts');return;}
+  var ics=buildICSFromPayload(payload);
+  try{
+    var blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    location.href=url;
+    setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  }catch(e){
+    try{location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);}catch(e2){}
+  }
 }
 function syncNow(){
   var payload=buildSyncPayload();
