@@ -757,8 +757,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-65';
-var APP_NOTE='تحسين دقة قراءة الصورة: الرموز القصيرة مثل B/N/E/A/M كانت تُقرأ خطأً (تشابه الحروف). الآن يُقيَّد التعرف الضوئي على الأحرف الموجودة في رموزك فقط، فتقل الأخطاء بشكل ملحوظ / Improved photo-read accuracy: short codes like B/N/E/A/M were being misread due to look-alike letter confusion. OCR is now restricted to only the characters in your typed codes, cutting misreads significantly.';
+var APP_VER='2026.07.07-66';
+var APP_NOTE='إصلاح جذري في معالجة الصورة: التلوين السابق كان يُضعف التباين على خلايا بألوان غامقة (أزرق/أخضر غامق) بدل تحسينه. الآن تُقارَن كل نقطة بمتوسط محيطها المحلي بدل عتبة واحدة للصورة كلها، فيُفصل النص عن أي لون خلفية بدقة / Real fix in image preprocessing: the previous contrast step actually weakened contrast on darker-colored cells (blue/dark-green) instead of improving it. Each pixel is now compared to its own local neighborhood average instead of one whole-image threshold, correctly separating text from any background color.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1748,8 +1748,41 @@ function handlePhotoFile(file){
   document.getElementById('photoStatus').textContent='';
   document.getElementById('photoOv').classList.add('op');
 }
-// Upscale + grayscale + contrast-boost before OCR — meaningfully improves accuracy on photos of a screen
-// (moiré, glare, tiny multi-column text), which is the realistic source for this feature.
+// Sum-area (integral) table over a flat grayscale buffer, for O(1) rectangle-sum queries.
+function buildIntegralImage(gray,w,h){
+  var integral=new Float64Array((w+1)*(h+1));
+  for(var y=0;y<h;y++){
+    var rowSum=0;
+    for(var x=0;x<w;x++){
+      rowSum+=gray[y*w+x];
+      integral[(y+1)*(w+1)+(x+1)]=integral[y*(w+1)+(x+1)]+rowSum;
+    }
+  }
+  return integral;
+}
+// Local adaptive-mean threshold (same idea as OpenCV's ADAPTIVE_THRESH_MEAN_C): each pixel is
+// binarized against the AVERAGE of its own neighborhood (minus a small bias), not one fixed
+// value for the whole image. A colorful UI screenshot has many distinct cell background colors —
+// a single global threshold (tried first, see git history) either shrinks contrast on darker
+// backgrounds or merges some backgrounds with the text into solid black; because text occupies
+// only a small fraction of any local neighborhood, comparing each pixel to its own surrounding
+// mean correctly isolates it as "locally darker than its background" regardless of that
+// background's actual hue/luminance.
+function adaptiveThreshold(gray,w,h,blockRadius,bias){
+  var integral=buildIntegralImage(gray,w,h);
+  var out=new Uint8ClampedArray(w*h);
+  for(var y=0;y<h;y++){
+    var y0=Math.max(0,y-blockRadius),y1=Math.min(h-1,y+blockRadius);
+    for(var x=0;x<w;x++){
+      var x0=Math.max(0,x-blockRadius),x1=Math.min(w-1,x+blockRadius);
+      var area=(x1-x0+1)*(y1-y0+1);
+      var sum=integral[(y1+1)*(w+1)+(x1+1)]-integral[y0*(w+1)+(x1+1)]-integral[(y1+1)*(w+1)+x0]+integral[y0*(w+1)+x0];
+      var mean=sum/area;
+      out[y*w+x]=gray[y*w+x]<(mean-bias)?0:255;
+    }
+  }
+  return out;
+}
 function preprocessImageForOCR(file){
   return new Promise(function(resolve,reject){
     var url=URL.createObjectURL(file);
@@ -1763,10 +1796,14 @@ function preprocessImageForOCR(file){
         ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
         ctx.drawImage(img,0,0,w,h);
         var id=ctx.getImageData(0,0,w,h),d=id.data;
-        for(var i=0;i<d.length;i+=4){
-          var gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-          gray=(gray-128)*1.35+128;gray=gray<0?0:gray>255?255:gray;
-          d[i]=d[i+1]=d[i+2]=gray;
+        var gray=new Uint8ClampedArray(d.length/4);
+        for(var i=0,gi=0;i<d.length;i+=4,gi++){
+          gray[gi]=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+        }
+        var bin=adaptiveThreshold(gray,w,h,18,12);
+        for(var j=0,gj=0;j<d.length;j+=4,gj++){
+          var v=bin[gj];
+          d[j]=d[j+1]=d[j+2]=v;
         }
         ctx.putImageData(id,0,0);
         URL.revokeObjectURL(url);
