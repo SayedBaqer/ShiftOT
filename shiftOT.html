@@ -117,6 +117,7 @@ input[type=time],input[type=number]{width:auto;}
       </div>
       <div style="display:flex;gap:7px">
         <button class="ib" id="syncBtn" onclick="syncNow()" title="Update calendar" style="position:relative">&#128260;<span id="syncDot" style="display:none;position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#F59E0B"></span></button>
+        <button class="ib" id="exportImgBtn" onclick="exportCalendarImage()" title="Export current month as image">&#128248;</button>
         <button class="ib" id="todayBtn">&#9678;</button>
         <button class="ib" id="patBtn">&#9881;</button>
       </div>
@@ -258,9 +259,6 @@ input[type=time],input[type=number]{width:auto;}
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Paste a rota from Excel (a row of dates and a row of shift codes) and map each code to a shift.</div>
       <button class="btn bs" onclick="openImport()">&#128229; Import from Excel</button>
 
-      <div class="sct">Export Schedule</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Save the currently viewed month as a shareable calendar image.</div>
-      <button class="btn bs" onclick="exportCalendarImage()">&#128248; Export current month as image</button>
 
       <div class="sct">Guide</div>
       <div id="guideSec"></div>
@@ -459,8 +457,9 @@ input[type=time],input[type=number]{width:auto;}
       <div id="xlsxSheetsList"></div>
       <button class="btn bp" onclick="parseExcelWorkbook()" style="margin-top:4px">&#128269; Parse with these months</button>
     </div>
+    <div id="xlsxRowPickUI" style="display:none;max-height:340px;overflow-y:auto"></div>
     <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or from a photo &mdash;</div>
-    <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoFile(this.files[0])"/>
+    <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="handlePhotoFile(this.files[0])"/>
     <button class="btn bs" onclick="document.getElementById('photoFile').click()">&#128248; Import from Photo (OCR, beta)</button>
     <div style="font-size:11px;color:var(--mu);margin:6px 0 0;line-height:1.55">For a screenshot/export of a monthly calendar grid (7 columns, day + code per cell). Works with any short codes you use — you confirm/fix every cell before importing.</div>
     <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or paste manually &mdash;</div>
@@ -484,6 +483,11 @@ input[type=time],input[type=number]{width:auto;}
   <div class="swipeHint">Swipe left or right to cancel</div>
   <div class="shs">
     <div id="photoStep1">
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">What does this photo show?</div>
+      <div class="sc2" style="margin-bottom:10px">
+        <div class="sr2" onclick="setPhotoMode('grid')" style="cursor:pointer"><div class="sl2">Calendar grid</div><div class="ss2">7 columns, day + code stacked in each cell</div><div class="tg" id="photoModeGridTg"></div></div>
+        <div class="sr2" onclick="setPhotoMode('table')" style="cursor:pointer"><div class="sl2">Team table</div><div class="ss2">Many rows (people), day columns — pick your row</div><div class="tg" id="photoModeTableTg"></div></div>
+      </div>
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Which month does this photo show?</div>
       <input type="month" id="photoMonth" style="width:auto;margin-bottom:10px"/>
       <button class="btn bp" onclick="runPhotoOCR()">&#128269; Read photo</button>
@@ -493,6 +497,15 @@ input[type=time],input[type=number]{width:auto;}
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Check &amp; fix any misread codes, then continue. Leave a cell blank to skip that day.</div>
       <div id="photoGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px"></div>
       <button class="btn bp" onclick="applyPhotoGrid()" style="margin-top:10px">&#10003; Use these codes</button>
+    </div>
+    <div id="photoRowPicker" style="display:none">
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Tap the row that is yours:</div>
+      <div id="photoRowList" style="max-height:340px;overflow-y:auto"></div>
+    </div>
+    <div id="photoStep3" style="display:none">
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Check &amp; fix each day, then continue. Leave a cell blank to skip that day.</div>
+      <div id="photoConfirmList" style="max-height:340px;overflow-y:auto"></div>
+      <button class="btn bp" onclick="applyPhotoTableRow()" style="margin-top:10px">&#10003; Use these codes</button>
     </div>
   </div>
 </div>
@@ -688,7 +701,14 @@ var AR={
   'Reading photo… this can take up to a minute':'جارٍ قراءة الصورة... قد يستغرق حتى دقيقة',
   'No text recognized in the photo':'لم يُتعرَّف على أي نص في الصورة',
   'Check & fix any misread codes, then continue. Leave a cell blank to skip that day.':'تحقّق وصحّح أي رموز قُرئت خطأً، ثم تابع. اترك الخلية فارغة لتخطّي ذلك اليوم.',
-  '✓ Use these codes':'✓ استخدم هذه الرموز','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
+  '✓ Use these codes':'✓ استخدم هذه الرموز',
+  'Calendar grid':'شبكة تقويم','7 columns, day + code stacked in each cell':'7 أعمدة، اليوم والرمز معاً في كل خلية',
+  'Team table':'جدول فريق','Many rows (people), day columns — pick your row':'صفوف كثيرة (أشخاص)، أعمدة أيام — اختر صفّك',
+  'What does this photo show?':'ماذا تُظهر هذه الصورة؟',
+  'Tap the row that is yours:':'اضغط الصف الذي يخصّك:',
+  'Check & fix each day, then continue. Leave a cell blank to skip that day.':'تحقّق وصحّح كل يوم، ثم تابع. اترك الخلية فارغة لتخطّي ذلك اليوم.',
+  'Could not find a row of day numbers (1-31) — try Calendar grid mode instead':'لم يُعثر على صف بأرقام أيام (1-31) — جرّب وضع شبكة التقويم بدلاً من ذلك',
+  '✓ Use selected rows':'✓ استخدم الصفوف المختارة','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -755,8 +775,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-55';
-var APP_NOTE='إصلاح زر تصدير الصورة على آيفون (تنقّل مباشر بدل التنزيل القسري) / Fixed image export on iPhone (direct navigation instead of forced download).';
+var APP_VER='2026.07.07-56';
+var APP_NOTE='وضع "جدول فريق" لاستيراد الإكسل والصور (اختر صفّك)، زر التصدير في الشريط العلوي / New "Team table" mode for Excel/photo import (pick your row), export button moved to the top bar.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1476,6 +1496,52 @@ function parseSheetNameDate(name){
   if(m2)return new Date(parseInt(m2[1],10),parseInt(m2[2],10)-1,1);
   return null;
 }
+// ── TEAM TABLE (many rows = people, columns = day-of-month) — shared by Excel + photo import ──
+// A header row of day-numbers (1-31) plus one data row of codes, aligned by column position.
+// Converts a header/data pair of "day, code" tokens into real dates, correctly handling a table that
+// starts a few days into the previous month (e.g. "28, 1, 2, 3…31") by detecting where day-numbers wrap.
+function datesFromDayCodePairs(pairs,y,m){
+  var hasDayOne=pairs.some(function(p){return p.day===1;});
+  var out=[];var monthOffset=-1,sawOne=false,lastDay=null;
+  pairs.forEach(function(p){
+    if(!hasDayOne){out.push({ds:dk(new Date(y,m,p.day)),code:p.code});return;}
+    if(!sawOne){if(p.day===1){sawOne=true;monthOffset=0;}}
+    else if(lastDay!=null&&p.day<lastDay){monthOffset++;}
+    var mo=sawOne?monthOffset:-1;
+    out.push({ds:dk(new Date(y,m+mo,p.day)),code:p.code});
+    lastDay=p.day;
+  });
+  return out;
+}
+// Excel: header/data are cell-value arrays, aligned by exact column index.
+function findDayHeaderRowXlsx(rows){
+  var best=-1,bestCount=0;
+  rows.forEach(function(row,i){
+    var cnt=0;
+    (row||[]).forEach(function(cell){
+      var n=(typeof cell==='number')?cell:parseInt(String(cell||'').trim(),10);
+      if(!isNaN(n)&&n>=1&&n<=31)cnt++;
+    });
+    if(cnt>bestCount){bestCount=cnt;best=i;}
+  });
+  return bestCount>=10?{idx:best,count:bestCount}:null;
+}
+function extractDayCodePairsXlsx(headerRow,dataRow){
+  var pairs=[];
+  for(var c=0;c<headerRow.length;c++){
+    var raw=headerRow[c];
+    var n=(typeof raw==='number')?raw:parseInt(String(raw||'').trim(),10);
+    if(isNaN(n)||n<1||n>31)continue;
+    var code=dataRow[c];
+    if(code==null||String(code).trim()==='')continue;
+    pairs.push({day:n,code:String(code).trim()});
+  }
+  return pairs;
+}
+function rowPreviewXlsx(row){
+  return (row||[]).filter(function(c){return c!=null&&String(c).trim()!=='';}).slice(0,4).map(function(c){return String(c).trim();}).join(' · ');
+}
+
 // Auto-detect a sheet's layout: tidy Date+Code columns, headerless A/B columns, or calendar-style dates-row/codes-row pairs.
 // All three strategies are tried; whichever yields the most valid pairs wins (avoids one heuristic falsely
 // short-circuiting another, e.g. a two-row date/code grid being misread as a headerless A/B column sheet).
@@ -1571,24 +1637,90 @@ function renderSheetMonthPicker(wb){
   });
   var ui=document.getElementById('xlsxSheetsUI');if(ui)ui.style.display='block';
 }
+var xlsxTeamSheets=[],xlsxStrategyPairs=[],xlsxRowSelection={};
 function parseExcelWorkbook(){
   if(!xlsxWb)return;
   var st=document.getElementById('xlsxStatus');
-  var all=[];
+  var all=[],teamSheets=[];
   document.querySelectorAll('#xlsxSheetsList input[type=month]').forEach(function(inp){
     var name=inp.getAttribute('data-sheet');
     var mv=(inp.value||'').split('-');
     var anchor=(mv.length===2)?new Date(parseInt(mv[0],10),parseInt(mv[1],10)-1,1):new Date(VY,VM,1);
     var ws=xlsxWb.Sheets[name];if(!ws)return;
     var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
-    all=all.concat(parseSheetRows(rows,anchor));
+    // Check team-table FIRST: a row with 10+ bare day-numbers (1-31) side by side is a strong, specific
+    // signal that only fires on a wide roster grid — the tidy/headerless/paired-row strategies below can
+    // otherwise misfire against it and silently return plausible-looking garbage instead of routing to the
+    // row-picker (this is exactly the bug that caused a real import to fail).
+    var hdr=findDayHeaderRowXlsx(rows);
+    if(hdr){teamSheets.push({name:name,rows:rows,headerIdx:hdr.idx,anchor:anchor});return;}
+    var got=parseSheetRows(rows,anchor);
+    if(got.length)all=all.concat(got);
   });
-  var byDate={};all.forEach(function(p){byDate[p.ds]=p.code;});
+  xlsxStrategyPairs=all;
+  if(teamSheets.length){
+    xlsxTeamSheets=teamSheets;xlsxRowSelection={};
+    renderXlsxRowPicker(teamSheets);
+    return;
+  }
+  finishExcelImport(all);
+}
+function renderXlsxRowPicker(teamSheets){
+  var st=document.getElementById('xlsxStatus');
+  if(st)st.textContent=(LANG==='ar'?'جدول فرق يحتاج اختيار صفّك':'Team table detected — pick your row below');
+  var ui=document.getElementById('xlsxSheetsUI');if(ui)ui.style.display='none';
+  var pk=document.getElementById('xlsxRowPickUI');if(!pk)return;
+  pk.innerHTML='';
+  teamSheets.forEach(function(sheet){
+    var h=document.createElement('div');
+    h.style.cssText='font-size:11px;font-weight:700;color:var(--amber);margin:10px 0 6px';
+    h.textContent=sheet.name;
+    pk.appendChild(h);
+    var list=document.createElement('div');
+    sheet.rows.forEach(function(row,ri){
+      if(ri<=sheet.headerIdx)return; // skip the title/header rows above the data — only real rows are candidates
+      var preview=rowPreviewXlsx(row);
+      if(!preview)return;
+      var item=document.createElement('div');
+      item.style.cssText='padding:8px 10px;background:var(--s2);border-radius:8px;margin-bottom:5px;font-size:12px;cursor:pointer;border:2px solid transparent';
+      item.textContent=preview;
+      item.onclick=(function(sn,idx,el){return function(){
+        xlsxRowSelection[sn]=idx;
+        Array.prototype.forEach.call(list.children,function(c){c.style.borderColor='transparent';});
+        el.style.borderColor='var(--indigo)';
+      };})(sheet.name,ri,item);
+      list.appendChild(item);
+    });
+    pk.appendChild(list);
+  });
+  var btn=document.createElement('button');
+  btn.className='btn bp';btn.style.marginTop='10px';
+  btn.textContent=t('✓ Use selected rows');
+  btn.onclick=finishXlsxRowPick;
+  pk.appendChild(btn);
+  pk.style.display='block';
+}
+function finishXlsxRowPick(){
+  var all=xlsxStrategyPairs.slice();
+  xlsxTeamSheets.forEach(function(sheet){
+    var ri=xlsxRowSelection[sheet.name];
+    if(ri==null)return;
+    var headerRow=sheet.rows[sheet.headerIdx]||[];
+    var dataRow=sheet.rows[ri]||[];
+    var pairs=extractDayCodePairsXlsx(headerRow,dataRow);
+    all=all.concat(datesFromDayCodePairs(pairs,sheet.anchor.getFullYear(),sheet.anchor.getMonth()));
+  });
+  var pk=document.getElementById('xlsxRowPickUI');if(pk)pk.style.display='none';
+  finishExcelImport(all);
+}
+function finishExcelImport(pairs){
+  var st=document.getElementById('xlsxStatus');
+  var byDate={};pairs.forEach(function(p){byDate[p.ds]=p.code;});
   var dsList=Object.keys(byDate).sort();
   impPairs=dsList.map(function(ds){return {ds:ds,code:byDate[ds]};});
   if(!impPairs.length){if(st)st.textContent=t('No usable data found in the file');return;}
   renderImportPreview();
-  if(st)st.textContent=(LANG==='ar'?('تم تحليل '+impPairs.length+' يوماً من '+xlsxWb.SheetNames.length+' ورقة ✓'):('Parsed '+impPairs.length+' days from '+xlsxWb.SheetNames.length+' sheet(s) ✓'));
+  if(st)st.textContent=(LANG==='ar'?('تم تحليل '+impPairs.length+' يوماً ✓'):('Parsed '+impPairs.length+' days ✓'));
 }
 // ── PHOTO IMPORT (OCR) — reads a calendar-grid screenshot, generalized to any short codes ──
 var TESS_LOADING=null;
@@ -1616,14 +1748,56 @@ function filterOcrWords(rawWords,imgHeight){
     return true;
   });
 }
+var photoMode='grid';
+function setPhotoMode(mode){
+  photoMode=mode;
+  var gt=document.getElementById('photoModeGridTg'),tt=document.getElementById('photoModeTableTg');
+  if(gt)gt.classList.toggle('on',mode==='grid');
+  if(tt)tt.classList.toggle('on',mode==='table');
+}
 function handlePhotoFile(file){
   if(!file)return;
   photoFileObj=file;
   document.getElementById('photoMonth').value=VY+'-'+String(VM+1).padStart(2,'0');
   document.getElementById('photoStep1').style.display='block';
   document.getElementById('photoStep2').style.display='none';
+  document.getElementById('photoRowPicker').style.display='none';
+  document.getElementById('photoStep3').style.display='none';
   document.getElementById('photoStatus').textContent='';
+  setPhotoMode('grid');
   document.getElementById('photoOv').classList.add('op');
+}
+// Upscale + grayscale + contrast-boost before OCR — meaningfully improves accuracy on photos of a screen
+// (moiré, glare, tiny multi-column text), which is the realistic source for this feature.
+function preprocessImageForOCR(file){
+  return new Promise(function(resolve,reject){
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var scale=img.naturalWidth<2200?2:1;
+        var w=Math.round(img.naturalWidth*scale),h=Math.round(img.naturalHeight*scale);
+        var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext('2d');
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+        ctx.drawImage(img,0,0,w,h);
+        var id=ctx.getImageData(0,0,w,h),d=id.data;
+        for(var i=0;i<d.length;i+=4){
+          var gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+          gray=(gray-128)*1.35+128;gray=gray<0?0:gray>255?255:gray;
+          d[i]=d[i+1]=d[i+2]=gray;
+        }
+        ctx.putImageData(id,0,0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function(blob){
+          if(!blob){reject(new Error('preprocess failed'));return;}
+          resolve({url:URL.createObjectURL(blob),w:w,h:h});
+        },'image/png');
+      }catch(e){URL.revokeObjectURL(url);reject(e);}
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('image load failed'));};
+    img.src=url;
+  });
 }
 // Cluster OCR words into a 7-column grid, then map (row,col) to a real calendar date
 // via the standard first-weekday offset — so date accuracy never depends on OCR reading numbers correctly.
@@ -1664,37 +1838,142 @@ function buildCalendarGridFromWords(words,y,m){
   }
   return out;
 }
+// Team-table mode: cluster into rows only (any number of columns), no fixed 7-col assumption.
+function clusterRowsOnly(words){
+  var hs=words.map(function(w){return w.h;}).slice().sort(function(a,b){return a-b;});
+  var medH=hs[Math.floor(hs.length/2)]||16;
+  var sorted=words.slice().sort(function(a,b){return a.cy-b.cy;});
+  var rows=[],cur=[],lastY=null;
+  sorted.forEach(function(w){
+    if(lastY!=null&&(w.cy-lastY)>medH*1.6){rows.push(cur);cur=[];}
+    cur.push(w);lastY=w.cy;
+  });
+  if(cur.length)rows.push(cur);
+  return rows.map(function(r){return r.slice().sort(function(a,b){return a.cx-b.cx;});});
+}
+function findHeaderRowOCR(rows){
+  var best=-1,bestCount=0;
+  rows.forEach(function(row,i){
+    var cnt=row.filter(function(w){var n=parseInt(w.text,10);return /^\d{1,2}$/.test(w.text)&&n>=1&&n<=31;}).length;
+    if(cnt>bestCount){bestCount=cnt;best=i;}
+  });
+  return bestCount>=8?best:-1;
+}
+function alignRowToHeaderOCR(dataRow,headerRow){
+  if(!headerRow.length)return[];
+  var xs=headerRow.map(function(w){return w.cx;});
+  var span=(Math.max.apply(null,xs)-Math.min.apply(null,xs))/Math.max(1,headerRow.length-1);
+  var tol=Math.max(span*0.6,20);
+  var pairs=[];
+  dataRow.forEach(function(tok){
+    if(/^\d{1,2}$/.test(tok.text))return; // skip stray day-numbers that leaked into the data row
+    var bestH=null,bestDist=Infinity;
+    headerRow.forEach(function(h){var d=Math.abs(h.cx-tok.cx);if(d<bestDist){bestDist=d;bestH=h;}});
+    if(bestH&&bestDist<=tol){
+      var n=parseInt(bestH.text,10);
+      if(n>=1&&n<=31)pairs.push({day:n,code:tok.text});
+    }
+  });
+  return pairs;
+}
+var photoRowClusters=null,photoHeaderIdx=-1,photoTargetYM=null;
 async function runPhotoOCR(){
   var st=document.getElementById('photoStatus');
   var mv=(document.getElementById('photoMonth').value||'').split('-');
   if(mv.length!==2){toast(LANG==='ar'?'اختر الشهر':'Choose the month');return;}
   var y=parseInt(mv[0],10),m=parseInt(mv[1],10)-1;
+  photoTargetYM={y:y,m:m};
   st.textContent=t('Loading OCR (first time only, needs internet)…');
   try{ await loadTesseract(); }
   catch(e){ st.textContent=t('OCR needs internet the first time'); return; }
   st.textContent=t('Reading photo… this can take up to a minute');
-  var imgUrl=null;
+  var proc=null;
   try{
-    imgUrl=URL.createObjectURL(photoFileObj);
-    var dims=await new Promise(function(res){var im=new Image();im.onload=function(){res({w:im.naturalWidth,h:im.naturalHeight});};im.onerror=function(){res({w:0,h:0});};im.src=imgUrl;});
-    var result=await Tesseract.recognize(imgUrl,'eng');
+    proc=await preprocessImageForOCR(photoFileObj);
+    var worker=await Tesseract.createWorker('eng');
+    try{ await worker.setParameters({tessedit_pageseg_mode:'11'}); }catch(e2){}
+    var result=await worker.recognize(proc.url);
+    await worker.terminate();
     var raw=[];
     (result.data.words||[]).forEach(function(w){
       if(!w.text||!w.text.trim())return;
       var b=w.bbox;
       raw.push({text:w.text.trim(),cx:(b.x0+b.x1)/2,cy:(b.y0+b.y1)/2,h:(b.y1-b.y0)});
     });
-    if(imgUrl){URL.revokeObjectURL(imgUrl);imgUrl=null;}
-    var words=filterOcrWords(raw,dims.h);
+    if(proc.url){URL.revokeObjectURL(proc.url);}
+    var words=filterOcrWords(raw,proc.h);
     if(!words.length){st.textContent=t('No text recognized in the photo');return;}
-    var grid=buildCalendarGridFromWords(words,y,m);
-    renderPhotoGrid(grid);
-    document.getElementById('photoStep1').style.display='none';
-    document.getElementById('photoStep2').style.display='block';
+    if(photoMode==='grid'){
+      var grid=buildCalendarGridFromWords(words,y,m);
+      renderPhotoGrid(grid);
+      document.getElementById('photoStep1').style.display='none';
+      document.getElementById('photoStep2').style.display='block';
+    } else {
+      var rows=clusterRowsOnly(words);
+      photoRowClusters=rows;
+      photoHeaderIdx=findHeaderRowOCR(rows);
+      if(photoHeaderIdx<0){st.textContent=t('Could not find a row of day numbers (1-31) — try Calendar grid mode instead');return;}
+      renderPhotoRowPicker(rows,photoHeaderIdx);
+      document.getElementById('photoStep1').style.display='none';
+      document.getElementById('photoRowPicker').style.display='block';
+    }
   }catch(e){
-    if(imgUrl)URL.revokeObjectURL(imgUrl);
+    if(proc&&proc.url)URL.revokeObjectURL(proc.url);
     st.textContent=(LANG==='ar'?'خطأ في القراءة: ':'Error reading: ')+(e&&e.message?e.message:e);
   }
+}
+function renderPhotoRowPicker(rows,headerIdx){
+  var list=document.getElementById('photoRowList');list.innerHTML='';
+  rows.forEach(function(row,ri){
+    if(ri<=headerIdx)return; // skip rows above/at the header — only real data rows are candidates
+    var preview=row.map(function(w){return w.text;}).join(' ');
+    if(!preview.trim())return;
+    var item=document.createElement('div');
+    item.style.cssText='padding:8px 10px;background:var(--s2);border-radius:8px;margin-bottom:5px;font-size:12px;cursor:pointer;border:2px solid transparent;word-break:break-word';
+    item.textContent=preview;
+    item.onclick=function(){selectPhotoRow(ri);};
+    list.appendChild(item);
+  });
+}
+function selectPhotoRow(ri){
+  var headerRow=photoRowClusters[photoHeaderIdx];
+  var dataRow=photoRowClusters[ri];
+  var pairs=alignRowToHeaderOCR(dataRow,headerRow);
+  if(!pairs.length){toast(LANG==='ar'?'لم تُطابَق أي رموز — جرّب صفاً آخر':'No codes matched — try another row');return;}
+  var dated=datesFromDayCodePairs(pairs,photoTargetYM.y,photoTargetYM.m);
+  renderPhotoConfirmList(dated);
+  document.getElementById('photoRowPicker').style.display='none';
+  document.getElementById('photoStep3').style.display='block';
+}
+function renderPhotoConfirmList(dated){
+  var list=document.getElementById('photoConfirmList');list.innerHTML='';
+  dated.sort(function(a,b){return a.ds<b.ds?-1:1;});
+  dated.forEach(function(item){
+    var d=pd(item.ds);
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:5px';
+    var lbl=document.createElement('div');
+    lbl.style.cssText='width:74px;flex-shrink:0;font-size:11px;color:var(--mu)';
+    lbl.textContent=fmtShort(d);
+    var inp=document.createElement('input');
+    inp.value=item.code||'';inp.setAttribute('data-ds',item.ds);
+    inp.style.cssText='flex:1;padding:6px 8px;font-size:12px';
+    row.appendChild(lbl);row.appendChild(inp);
+    list.appendChild(row);
+  });
+}
+function applyPhotoTableRow(){
+  var pairs=[];
+  document.querySelectorAll('#photoConfirmList input').forEach(function(inp){
+    var code=(inp.value||'').trim();
+    if(!code)return;
+    pairs.push({ds:inp.getAttribute('data-ds'),code:code});
+  });
+  if(!pairs.length){toast(LANG==='ar'?'لا رموز صالحة':'No valid codes');return;}
+  impPairs=pairs;
+  closeOv('photoOv');
+  renderImportPreview();
+  toast(LANG==='ar'?('جاهز لربط '+pairs.length+' يوماً'):('Ready to map '+pairs.length+' days'));
 }
 function renderPhotoGrid(grid){
   var g=document.getElementById('photoGrid');g.innerHTML='';
@@ -1732,7 +2011,9 @@ function openImport(){
   var xf=document.getElementById('xlsxFile');if(xf)xf.value='';
   var xs=document.getElementById('xlsxStatus');if(xs)xs.textContent='';
   var xu=document.getElementById('xlsxSheetsUI');if(xu)xu.style.display='none';
-  xlsxWb=null;
+  var xrp=document.getElementById('xlsxRowPickUI');if(xrp){xrp.style.display='none';xrp.innerHTML='';}
+  xlsxWb=null;xlsxTeamSheets=[];xlsxStrategyPairs=[];xlsxRowSelection={};
+  var photoFileEl=document.getElementById('photoFile');if(photoFileEl)photoFileEl.value='';
   impPairs=[];
   document.getElementById('impOv').classList.add('op');
 }
