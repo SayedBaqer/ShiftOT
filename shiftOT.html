@@ -446,6 +446,11 @@ input[type=time],input[type=number]{width:auto;}
   <div class="shTop"><div class="sht">Import from Excel</div><button class="btnTop" onclick="applyImport()">&#10003; Import</button></div>
   <div class="swipeHint">Swipe left or right to cancel</div>
   <div class="shs">
+    <input type="file" id="xlsxFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelFile(this.files[0])"/>
+    <button class="btn bp" onclick="document.getElementById('xlsxFile').click()">&#128194; Choose Excel File (.xlsx / .xls / .csv)</button>
+    <div style="font-size:11px;color:var(--mu);margin:6px 0 4px;line-height:1.55">Best format: a <b style="color:var(--tx)">Date</b> column and a <b style="color:var(--tx)">Code</b> column, one row per day. Works across many months and multiple sheets at once — everything merges automatically below.</div>
+    <div id="xlsxStatus" style="font-size:11px;color:var(--mu);min-height:14px"></div>
+    <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or paste manually &mdash;</div>
     <div style="font-size:13px;color:var(--mu);margin-bottom:9px;line-height:1.55">In Excel, select two rows and copy, then paste below:<br>&#8226; Row 1 &rarr; <b style="color:var(--tx)">dates</b> (e.g. 1/7/2026)<br>&#8226; Row 2 &rarr; <b style="color:var(--tx)">shift codes</b> (e.g. M, N, LM, O)<br><span style="color:#5A5A80">One row only = codes applied day-by-day from the start date.</span></div>
     <textarea id="impTA" placeholder="Paste here…" style="min-height:92px;font-family:'Courier New',monospace;font-size:12px"></textarea>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0">
@@ -631,7 +636,12 @@ var AR={
   'Auto Reminders (Scriptable)':'تنبيهات تلقائية (Scriptable)','Remind before shift':'التذكير قبل الوردية',
   'Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.':'تنبيهات ورديات تلقائية على آيفون عبر تطبيق Scriptable المجاني + أتمتة يومية. الإعداد مرة واحدة، ويعيد الجدولة يومياً تلقائياً.',
   '📋 Copy Scriptable script':'📋 نسخ سكربت Scriptable','How to set up / كيفية الإعداد':'كيفية الإعداد',
-  'Off / No alarm':'إيقاف / بلا تنبيه','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
+  'Off / No alarm':'إيقاف / بلا تنبيه',
+  '📂 Choose Excel File (.xlsx / .xls / .csv)':'📂 اختر ملف إكسل (.xlsx / .xls / .csv)',
+  'Best format: a Date column and a Code column, one row per day. Works across many months and multiple sheets at once — everything merges automatically below.':'أفضل تنسيق: عمود التاريخ وعمود الرمز، صف واحد لكل يوم. يعمل عبر عدة أشهر وعدة أوراق دفعة واحدة — يُدمَج كل شيء تلقائياً أدناه.',
+  '— or paste manually —':'— أو الصق يدوياً —',
+  'Reading file…':'جارٍ قراءة الملف...','Excel import needs internet the first time (to load the parser)':'استيراد إكسل يحتاج اتصالاً بالإنترنت أول مرة (لتحميل أداة التحليل)',
+  'No usable data found in the file':'لم يُعثر على بيانات صالحة في الملف','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -698,8 +708,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-51';
-var APP_NOTE='إمكانية إيقاف/تشغيل تنبيه الوردية بالكامل من "التذكير قبل الوردية" / Alarm can now be fully enabled or disabled from the Remind-before-shift setting.';
+var APP_VER='2026.07.07-52';
+var APP_NOTE='استيراد ملفات إكسل (.xlsx/.xls/.csv) — عدة أشهر وعدة أوراق دفعة واحدة / Excel file import (.xlsx/.xls/.csv) — multiple months and sheets at once.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1371,11 +1381,127 @@ function parseImpDate(s,ay,am){
   var d2=new Date(s);if(!isNaN(d2.getTime()))return d2;
   return null;
 }
+// ── EXCEL FILE IMPORT (.xlsx/.xls/.csv) — multi-sheet, multi-month, tidy or grid layout ──
+var XLSX_LOADING=null;
+function loadXLSX(){
+  if(typeof XLSX!=='undefined')return Promise.resolve();
+  if(XLSX_LOADING)return XLSX_LOADING;
+  XLSX_LOADING=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload=function(){resolve();};
+    s.onerror=function(){XLSX_LOADING=null;reject(new Error('offline'));};
+    document.head.appendChild(s);
+  });
+  return XLSX_LOADING;
+}
+function excelSerialToDate(n){var d=new Date(1899,11,30);d.setDate(d.getDate()+Math.floor(n));return d;}
+function cellToDate(v,ay,am){
+  if(v==null||v==='')return null;
+  if(v instanceof Date)return isNaN(v.getTime())?null:new Date(v.getFullYear(),v.getMonth(),v.getDate());
+  if(typeof v==='number')return excelSerialToDate(v);
+  return parseImpDate(String(v),ay,am);
+}
+function looksLikeHeader(s,words){var t=String(s||'').trim().toLowerCase();return words.some(function(w){return t.indexOf(w)>=0;});}
+function parseSheetNameDate(name){
+  var s=String(name).trim();
+  var months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  var m=s.match(/([a-zA-Z]{3,9})[\s\-_]*'?(\d{2,4})/);
+  if(m){var mk=m[1].toLowerCase().slice(0,3);if(months[mk]!=null){var yy=parseInt(m[2],10);if(yy<100)yy+=2000;return new Date(yy,months[mk],1);}}
+  var m2=s.match(/(\d{4})[-\/](\d{1,2})/);
+  if(m2)return new Date(parseInt(m2[1],10),parseInt(m2[2],10)-1,1);
+  return null;
+}
+// Auto-detect a sheet's layout: tidy Date+Code columns, headerless A/B columns, or calendar-style dates-row/codes-row pairs.
+// All three strategies are tried; whichever yields the most valid pairs wins (avoids one heuristic falsely
+// short-circuiting another, e.g. a two-row date/code grid being misread as a headerless A/B column sheet).
+function parseSheetRows(rows,anchor){
+  var ay=anchor.getFullYear(),am=anchor.getMonth();
+  if(!rows||!rows.length)return [];
+
+  var tidy=[];
+  var hdrRow=-1,dateCol=-1,codeCol=-1;
+  for(var r=0;r<Math.min(5,rows.length);r++){
+    var row=rows[r]||[];var dc=-1,cc=-1;
+    for(var c=0;c<row.length;c++){
+      var cell=row[c];
+      if(dc<0&&looksLikeHeader(cell,['date','تاريخ','day']))dc=c;
+      if(cc<0&&looksLikeHeader(cell,['code','shift','duty','ورد','رمز']))cc=c;
+    }
+    if(dc>=0&&cc>=0){hdrRow=r;dateCol=dc;codeCol=cc;break;}
+  }
+  if(hdrRow>=0){
+    for(var i=hdrRow+1;i<rows.length;i++){
+      var row2=rows[i]||[];var cv=row2[codeCol];
+      if(cv==null||String(cv).trim()==='')continue;
+      var d=cellToDate(row2[dateCol],ay,am);if(!d)continue;
+      tidy.push({ds:dk(d),code:String(cv).trim()});
+    }
+  }
+
+  var noHdr=[];
+  for(var j=0;j<rows.length;j++){
+    var row3=rows[j]||[];var d2=cellToDate(row3[0],ay,am);var cv2=row3[1];
+    if(d2&&cv2!=null&&String(cv2).trim()!==''&&!cellToDate(cv2,ay,am))noHdr.push({ds:dk(d2),code:String(cv2).trim()});
+  }
+
+  var grid=[];
+  for(var k=0;k<rows.length-1;k++){
+    var a=(rows[k]||[]).map(function(x){return x==null?'':x;});
+    var b=(rows[k+1]||[]).map(function(x){return x==null?'':x;});
+    if(!a.length||!b.length)continue;
+    var aDates=a.filter(function(x){return cellToDate(x,ay,am);}).length;
+    var bDates=b.filter(function(x){return cellToDate(x,ay,am);}).length;
+    if(aDates<2&&bDates<2)continue;
+    var dRow=aDates>=bDates?a:b,cRow=aDates>=bDates?b:a;
+    var got=[];
+    for(var m=0;m<Math.max(dRow.length,cRow.length);m++){
+      var ccell=cRow[m];if(ccell==null||String(ccell).trim()==='')continue;
+      var dd=cellToDate(dRow[m],ay,am)||aD(anchor,m);
+      got.push({ds:dk(dd),code:String(ccell).trim()});
+    }
+    if(got.length)grid=grid.concat(got);
+  }
+
+  var best=tidy;
+  if(noHdr.length>best.length)best=noHdr;
+  if(grid.length>best.length)best=grid;
+  return best;
+}
+async function handleExcelFile(file){
+  if(!file)return;
+  var st=document.getElementById('xlsxStatus');
+  if(st)st.textContent=t('Reading file…');
+  try{ await loadXLSX(); }
+  catch(e){ if(st)st.textContent=t('Excel import needs internet the first time (to load the parser)'); return; }
+  try{
+    var buf=await file.arrayBuffer();
+    var wb=XLSX.read(buf,{type:'array',cellDates:true});
+    var anchor=new Date(VY,VM,1);
+    var all=[];
+    wb.SheetNames.forEach(function(name){
+      var ws=wb.Sheets[name];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+      var sheetAnchor=parseSheetNameDate(name)||anchor;
+      all=all.concat(parseSheetRows(rows,sheetAnchor));
+    });
+    var byDate={};all.forEach(function(p){byDate[p.ds]=p.code;});
+    var dsList=Object.keys(byDate).sort();
+    impPairs=dsList.map(function(ds){return {ds:ds,code:byDate[ds]};});
+    if(!impPairs.length){if(st)st.textContent=t('No usable data found in the file');return;}
+    renderImportPreview();
+    if(st)st.textContent=(LANG==='ar'?('تم تحليل '+impPairs.length+' يوماً من '+wb.SheetNames.length+' ورقة ✓'):('Parsed '+impPairs.length+' days from '+wb.SheetNames.length+' sheet(s) ✓'));
+  }catch(e){
+    if(st)st.textContent=(LANG==='ar'?'خطأ في قراءة الملف: ':'Error reading file: ')+(e&&e.message?e.message:e);
+  }
+}
 function openImport(){
   document.getElementById('impTA').value='';
   document.getElementById('impStart').value=dk(new Date(VY,VM,1));
   document.getElementById('impEnd').value='';
   document.getElementById('impPreview').innerHTML='';
+  var xf=document.getElementById('xlsxFile');if(xf)xf.value='';
+  var xs=document.getElementById('xlsxStatus');if(xs)xs.textContent='';
   impPairs=[];
   document.getElementById('impOv').classList.add('op');
 }
