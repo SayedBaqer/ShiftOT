@@ -757,8 +757,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-64';
-var APP_NOTE='سكربت Scriptable الآن يُغلق مباشرة دون أي نافذة تأكيد عند نجاح المزامنة، أياً كانت طريقة التشغيل (تطبيق أو Shortcut/أتمتة) — النافذة تظهر فقط عند وجود مشكلة فعلية تحتاج انتباهك / The Scriptable script now exits immediately with no confirmation popup whenever sync succeeds, no matter how it was triggered (app, Shortcut, or automation) — a popup only appears when something actually needs your attention.';
+var APP_VER='2026.07.07-65';
+var APP_NOTE='تحسين دقة قراءة الصورة: الرموز القصيرة مثل B/N/E/A/M كانت تُقرأ خطأً (تشابه الحروف). الآن يُقيَّد التعرف الضوئي على الأحرف الموجودة في رموزك فقط، فتقل الأخطاء بشكل ملحوظ / Improved photo-read accuracy: short codes like B/N/E/A/M were being misread due to look-alike letter confusion. OCR is now restricted to only the characters in your typed codes, cutting misreads significantly.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1794,6 +1794,18 @@ function clusterRowsOnly(words){
   if(cur.length)rows.push(cur);
   return rows.map(function(r){return r.slice().sort(function(a,b){return a.cx-b.cx;});});
 }
+// Single/short letter shift codes (B, N, E, A, M...) are exactly what general-purpose OCR confuses most
+// (N/M, O/0, etc.) since the classifier is guessing across the whole alphabet for every glyph. Restricting
+// Tesseract's character set to only the letters that actually appear in the user's codes (plus digits/space,
+// so day-numbers still decode as digits instead of getting force-mapped into a stray letter) sharply narrows
+// that guess and measurably improves accuracy for exactly this short-code use case.
+function buildOcrCharWhitelist(codes){
+  var set={};
+  codes.forEach(function(c){
+    for(var i=0;i<c.length;i++){var ch=c[i];set[ch.toUpperCase()]=true;set[ch.toLowerCase()]=true;}
+  });
+  return Object.keys(set).join('')+'0123456789 ';
+}
 // Simplified photo import: OCR the whole photo, keep only words matching the user's own
 // specified codes (case-insensitive), read them in natural row-by-row / left-to-right order,
 // then hand the raw sequence to the existing manual-paste textarea — the user directly fixes
@@ -1804,7 +1816,8 @@ async function runPhotoOCR(){
   var codesRaw=(document.getElementById('photoCodes').value||'').trim();
   if(!codesRaw){toast(LANG==='ar'?'اكتب الرموز أولاً':'Type your codes first');return;}
   var validCodes={};
-  codesRaw.split(/[,\n]/).forEach(function(c){var u=c.trim().toUpperCase();if(u)validCodes[u]=true;});
+  var codeList=[];
+  codesRaw.split(/[,\n]/).forEach(function(c){var u=c.trim().toUpperCase();if(u){validCodes[u]=true;codeList.push(u);}});
   st.textContent=t('Loading OCR (first time only, needs internet)…');
   try{ await loadTesseract(); }
   catch(e){ st.textContent=t('OCR needs internet the first time'); return; }
@@ -1813,7 +1826,7 @@ async function runPhotoOCR(){
   try{
     proc=await preprocessImageForOCR(photoFileObj);
     var worker=await Tesseract.createWorker('eng');
-    try{ await worker.setParameters({tessedit_pageseg_mode:'11'}); }catch(e2){}
+    try{ await worker.setParameters({tessedit_pageseg_mode:'11',tessedit_char_whitelist:buildOcrCharWhitelist(codeList)}); }catch(e2){}
     var result=await worker.recognize(proc.url);
     await worker.terminate();
     var raw=[];
