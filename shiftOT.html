@@ -757,8 +757,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-63';
-var APP_NOTE='تبيّن أن Scriptable لا يوفر أي واجهة لإضافة تنبيه على حدث التقويم نفسه (لا يوجد Alarm/addAlert إطلاقاً) — قيد حقيقي من التطبيق نفسه. لذلك ستبقى خانة "Alert" في تطبيق التقويم "None" دائماً لأي حدث تُنشئه Scriptable. التذكير الفعلي يصلك كإشعار منفصل من الهاتف حسب إعداد "التذكير قبل الوردية" / Confirmed Scriptable has no API to attach an alert to a calendar event itself (no Alarm class, no addAlert) — a real platform limitation, not a bug. The Calendar app will always show "Alert: None" for Scriptable-created events. Your actual reminder arrives as a separate phone notification per your "Remind before shift" setting.';
+var APP_VER='2026.07.07-64';
+var APP_NOTE='سكربت Scriptable الآن يُغلق مباشرة دون أي نافذة تأكيد عند نجاح المزامنة، أياً كانت طريقة التشغيل (تطبيق أو Shortcut/أتمتة) — النافذة تظهر فقط عند وجود مشكلة فعلية تحتاج انتباهك / The Scriptable script now exits immediately with no confirmation popup whenever sync succeeds, no matter how it was triggered (app, Shortcut, or automation) — a popup only appears when something actually needs your attention.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -2076,7 +2076,7 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v15";');
+  L.push('const VER="v16";');
   L.push('const KKEY="shiftcal-data";');
   L.push('const GISTURL='+JSON.stringify(ST.gistOn?(ST.gistRawUrl||''):'')+';');
   L.push('(async()=>{');
@@ -2138,9 +2138,9 @@ function buildScriptable(){
   L.push('let sum="wiped "+wiped+" • wrote "+made+" • verified "+verifyN+" in \\""+cal.title+"\\" • notification reminders scheduled "+alarms+" (calendar events themselves cannot carry an alert — Scriptable has no alarm API) • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
   L.push('let inApp=(typeof config!=="undefined"&&config.runsInApp);');
   L.push('let proven=(made>0&&verifyN>0);');
-  L.push('if(dl&&inApp&&proven){Script.complete();App.close();}'); // silent only when success is PROVEN by read-back
-  L.push('else if(inApp){let a=new Alert();a.title="ShiftCal "+VER+(proven?" ✓":" ⚠️");a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"")+(prevRun?"\\nprev run: "+prevRun:"");a.addAction("OK");await a.present();Script.complete();}');
-  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+(proven?" ✓":" ⚠️");n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
+  L.push('if(proven){Script.complete();if(inApp)App.close();return;}'); // success is PROVEN by read-back — always exit silently, no popup, however the script was triggered
+  L.push('if(inApp){let a=new Alert();a.title="ShiftCal "+VER+" ⚠️";a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"")+(prevRun?"\\nprev run: "+prevRun:"");a.addAction("OK");await a.present();Script.complete();}');
+  L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+" ⚠️";n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
   L.push('}catch(err){');
   L.push('  let em="ERROR: "+(err&&err.message?err.message:String(err))+(err&&err.line?" (line "+err.line+")":"");');
   L.push('  try{if(typeof config!=="undefined"&&config.runsInApp){let a=new Alert();a.title="ShiftCal "+VER+" ✗";a.message=em;a.addAction("OK");await a.present();}');
