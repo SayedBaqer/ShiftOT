@@ -258,6 +258,10 @@ input[type=time],input[type=number]{width:auto;}
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Paste a rota from Excel (a row of dates and a row of shift codes) and map each code to a shift.</div>
       <button class="btn bs" onclick="openImport()">&#128229; Import from Excel</button>
 
+      <div class="sct">Export Schedule</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Save the currently viewed month as a shareable calendar image.</div>
+      <button class="btn bs" onclick="exportCalendarImage()">&#128248; Export current month as image</button>
+
       <div class="sct">Guide</div>
       <div id="guideSec"></div>
 
@@ -455,6 +459,10 @@ input[type=time],input[type=number]{width:auto;}
       <div id="xlsxSheetsList"></div>
       <button class="btn bp" onclick="parseExcelWorkbook()" style="margin-top:4px">&#128269; Parse with these months</button>
     </div>
+    <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or from a photo &mdash;</div>
+    <input type="file" id="photoFile" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoFile(this.files[0])"/>
+    <button class="btn bs" onclick="document.getElementById('photoFile').click()">&#128248; Import from Photo (OCR, beta)</button>
+    <div style="font-size:11px;color:var(--mu);margin:6px 0 0;line-height:1.55">For a screenshot/export of a monthly calendar grid (7 columns, day + code per cell). Works with any short codes you use — you confirm/fix every cell before importing.</div>
     <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or paste manually &mdash;</div>
     <div style="font-size:13px;color:var(--mu);margin-bottom:9px;line-height:1.55">In Excel, select two rows and copy, then paste below:<br>&#8226; Row 1 &rarr; <b style="color:var(--tx)">dates</b> (e.g. 1/7/2026)<br>&#8226; Row 2 &rarr; <b style="color:var(--tx)">shift codes</b> (e.g. M, N, LM, O)<br><span style="color:#5A5A80">One row only = codes applied day-by-day from the start date.</span></div>
     <textarea id="impTA" placeholder="Paste here…" style="min-height:92px;font-family:'Courier New',monospace;font-size:12px"></textarea>
@@ -464,6 +472,28 @@ input[type=time],input[type=number]{width:auto;}
     </div>
     <button class="btn bs" onclick="parseImport()">&#128269; Preview &amp; map codes</button>
     <div id="impPreview" style="margin-top:10px"></div>
+  </div>
+</div>
+</div>
+
+<!-- PHOTO IMPORT REVIEW -->
+<div class="ov" id="photoOv">
+<div class="sh">
+  <div class="shh"></div>
+  <div class="shTop"><div class="sht">Import from Photo</div></div>
+  <div class="swipeHint">Swipe left or right to cancel</div>
+  <div class="shs">
+    <div id="photoStep1">
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Which month does this photo show?</div>
+      <input type="month" id="photoMonth" style="width:auto;margin-bottom:10px"/>
+      <button class="btn bp" onclick="runPhotoOCR()">&#128269; Read photo</button>
+      <div id="photoStatus" style="font-size:11px;color:var(--mu);margin-top:8px;min-height:14px;line-height:1.5"></div>
+    </div>
+    <div id="photoStep2" style="display:none">
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Check &amp; fix any misread codes, then continue. Leave a cell blank to skip that day.</div>
+      <div id="photoGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px"></div>
+      <button class="btn bp" onclick="applyPhotoGrid()" style="margin-top:10px">&#10003; Use these codes</button>
+    </div>
   </div>
 </div>
 </div>
@@ -647,7 +677,18 @@ var AR={
   '— or paste manually —':'— أو الصق يدوياً —',
   'Reading file…':'جارٍ قراءة الملف...','Excel import needs internet the first time (to load the parser)':'استيراد إكسل يحتاج اتصالاً بالإنترنت أول مرة (لتحميل أداة التحليل)',
   'No usable data found in the file':'لم يُعثر على بيانات صالحة في الملف',
-  'Match each sheet to its month':'اربط كل ورقة بشهرها','🔍 Parse with these months':'🔍 تحليل بهذه الأشهر','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
+  'Match each sheet to its month':'اربط كل ورقة بشهرها','🔍 Parse with these months':'🔍 تحليل بهذه الأشهر',
+  'Export Schedule':'تصدير الجدول','Save the currently viewed month as a shareable calendar image.':'احفظ الشهر المعروض حالياً كصورة تقويم قابلة للمشاركة.',
+  '📸 Export current month as image':'📸 تصدير الشهر الحالي كصورة',
+  '📷 Import from Photo (OCR, beta)':'📷 استيراد من صورة (تعرّف ضوئي، تجريبي)',
+  'For a screenshot/export of a monthly calendar grid (7 columns, day + code per cell). Works with any short codes you use — you confirm/fix every cell before importing.':'لصورة/تصدير شبكة تقويم شهرية (7 أعمدة، يوم + رمز لكل خلية). يعمل مع أي رموز مختصرة تستخدمها — تؤكّد/تصحّح كل خلية قبل الاستيراد.',
+  'Import from Photo':'استيراد من صورة','Which month does this photo show?':'ما الشهر الذي تُظهره هذه الصورة؟',
+  '🔍 Read photo':'🔍 قراءة الصورة','Loading OCR (first time only, needs internet)…':'جارٍ تحميل أداة التعرّف الضوئي (أول مرة فقط، يحتاج إنترنت)...',
+  'OCR needs internet the first time':'التعرّف الضوئي يحتاج اتصالاً بالإنترنت أول مرة',
+  'Reading photo… this can take up to a minute':'جارٍ قراءة الصورة... قد يستغرق حتى دقيقة',
+  'No text recognized in the photo':'لم يُتعرَّف على أي نص في الصورة',
+  'Check & fix any misread codes, then continue. Leave a cell blank to skip that day.':'تحقّق وصحّح أي رموز قُرئت خطأً، ثم تابع. اترك الخلية فارغة لتخطّي ذلك اليوم.',
+  '✓ Use these codes':'✓ استخدم هذه الرموز','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -714,8 +755,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-53';
-var APP_NOTE='اختر يدوياً الشهر المطابق لكل ورقة إكسل قبل التحليل / Manually match each Excel sheet to its month before parsing.';
+var APP_VER='2026.07.07-54';
+var APP_NOTE='استيراد من صورة تقويم (تعرّف ضوئي) وتصدير الشهر كصورة / Import from a calendar photo (OCR) and export the month as an image.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1535,6 +1576,143 @@ function parseExcelWorkbook(){
   renderImportPreview();
   if(st)st.textContent=(LANG==='ar'?('تم تحليل '+impPairs.length+' يوماً من '+xlsxWb.SheetNames.length+' ورقة ✓'):('Parsed '+impPairs.length+' days from '+xlsxWb.SheetNames.length+' sheet(s) ✓'));
 }
+// ── PHOTO IMPORT (OCR) — reads a calendar-grid screenshot, generalized to any short codes ──
+var TESS_LOADING=null;
+function loadTesseract(){
+  if(typeof Tesseract!=='undefined')return Promise.resolve();
+  if(TESS_LOADING)return TESS_LOADING;
+  TESS_LOADING=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload=function(){resolve();};
+    s.onerror=function(){TESS_LOADING=null;reject(new Error('offline'));};
+    document.head.appendChild(s);
+  });
+  return TESS_LOADING;
+}
+var photoFileObj=null;
+var MONTHNAMES_EN=['january','february','march','april','may','june','july','august','september','october','november','december'];
+var WEEKDAYNAMES_EN=['sun','sunday','mon','monday','tue','tuesday','wed','wednesday','thu','thursday','fri','friday','sat','saturday'];
+// Strip the month title and weekday header row from raw OCR words before grid-clustering.
+function filterOcrWords(rawWords,imgHeight){
+  var headerCut=imgHeight?imgHeight*0.12:0;
+  return rawWords.filter(function(w){
+    if(w.cy<headerCut)return false;
+    var t2=w.text.toLowerCase().replace(/[^a-z]/g,'');
+    if(MONTHNAMES_EN.indexOf(t2)>=0)return false;
+    if(WEEKDAYNAMES_EN.indexOf(t2)>=0)return false;
+    if(/^\d{4}$/.test(w.text.trim()))return false;
+    return true;
+  });
+}
+function handlePhotoFile(file){
+  if(!file)return;
+  photoFileObj=file;
+  document.getElementById('photoMonth').value=VY+'-'+String(VM+1).padStart(2,'0');
+  document.getElementById('photoStep1').style.display='block';
+  document.getElementById('photoStep2').style.display='none';
+  document.getElementById('photoStatus').textContent='';
+  document.getElementById('photoOv').classList.add('op');
+}
+// Cluster OCR words into a 7-column grid, then map (row,col) to a real calendar date
+// via the standard first-weekday offset — so date accuracy never depends on OCR reading numbers correctly.
+function buildCalendarGridFromWords(words,y,m){
+  var xs=words.map(function(w){return w.cx;});
+  var minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs);
+  var colW=(maxX-minX+1)/7;
+  function colOf(cx){return Math.min(6,Math.max(0,Math.floor((cx-minX)/colW)));}
+  var hs=words.map(function(w){return w.h;}).slice().sort(function(a,b){return a-b;});
+  var medH=hs[Math.floor(hs.length/2)]||20;
+  var sorted=words.slice().sort(function(a,b){return a.cy-b.cy;});
+  var rows=[],cur=[],lastY=null;
+  sorted.forEach(function(w){
+    if(lastY!=null&&(w.cy-lastY)>medH*1.8){rows.push(cur);cur=[];}
+    cur.push(w);lastY=w.cy;
+  });
+  if(cur.length)rows.push(cur);
+  var cells={};
+  rows.forEach(function(rowWords,r){
+    rowWords.forEach(function(w){
+      var key=r+'-'+colOf(w.cx);
+      if(!cells[key])cells[key]=[];
+      cells[key].push(w.text);
+    });
+  });
+  var first=new Date(y,m,1);
+  var startPad=first.getDay();
+  var out=[];
+  for(var r=0;r<rows.length;r++){
+    for(var c=0;c<7;c++){
+      var idx=r*7+c-startPad;
+      var date=new Date(y,m,1+idx);
+      var tokens=cells[r+'-'+c]||[];
+      var codeToks=[];
+      tokens.forEach(function(tk){if(!/^\d{1,2}$/.test(tk)&&!/^[*•\-_]+$/.test(tk))codeToks.push(tk);});
+      out.push({ds:dk(date),code:codeToks.join(' ')});
+    }
+  }
+  return out;
+}
+async function runPhotoOCR(){
+  var st=document.getElementById('photoStatus');
+  var mv=(document.getElementById('photoMonth').value||'').split('-');
+  if(mv.length!==2){toast(LANG==='ar'?'اختر الشهر':'Choose the month');return;}
+  var y=parseInt(mv[0],10),m=parseInt(mv[1],10)-1;
+  st.textContent=t('Loading OCR (first time only, needs internet)…');
+  try{ await loadTesseract(); }
+  catch(e){ st.textContent=t('OCR needs internet the first time'); return; }
+  st.textContent=t('Reading photo… this can take up to a minute');
+  var imgUrl=null;
+  try{
+    imgUrl=URL.createObjectURL(photoFileObj);
+    var dims=await new Promise(function(res){var im=new Image();im.onload=function(){res({w:im.naturalWidth,h:im.naturalHeight});};im.onerror=function(){res({w:0,h:0});};im.src=imgUrl;});
+    var result=await Tesseract.recognize(imgUrl,'eng');
+    var raw=[];
+    (result.data.words||[]).forEach(function(w){
+      if(!w.text||!w.text.trim())return;
+      var b=w.bbox;
+      raw.push({text:w.text.trim(),cx:(b.x0+b.x1)/2,cy:(b.y0+b.y1)/2,h:(b.y1-b.y0)});
+    });
+    if(imgUrl){URL.revokeObjectURL(imgUrl);imgUrl=null;}
+    var words=filterOcrWords(raw,dims.h);
+    if(!words.length){st.textContent=t('No text recognized in the photo');return;}
+    var grid=buildCalendarGridFromWords(words,y,m);
+    renderPhotoGrid(grid);
+    document.getElementById('photoStep1').style.display='none';
+    document.getElementById('photoStep2').style.display='block';
+  }catch(e){
+    if(imgUrl)URL.revokeObjectURL(imgUrl);
+    st.textContent=(LANG==='ar'?'خطأ في القراءة: ':'Error reading: ')+(e&&e.message?e.message:e);
+  }
+}
+function renderPhotoGrid(grid){
+  var g=document.getElementById('photoGrid');g.innerHTML='';
+  var wd=(LANG==='ar')?AR.weekdays:WD_EN;
+  wd.forEach(function(nm){var h=document.createElement('div');h.style.cssText='font-size:9px;font-weight:700;color:var(--mu);text-align:center';h.textContent=String(nm).slice(0,3);g.appendChild(h);});
+  grid.forEach(function(cell){
+    var d=pd(cell.ds);
+    var wrap=document.createElement('div');
+    wrap.style.cssText='background:var(--s2);border-radius:6px;padding:4px;text-align:center';
+    var dn=document.createElement('div');dn.style.cssText='font-size:9px;color:var(--mu)';dn.textContent=d.getDate();
+    var inp=document.createElement('input');inp.value=cell.code||'';inp.setAttribute('data-ds',cell.ds);
+    inp.style.cssText='width:100%;padding:3px;font-size:11px;text-align:center;margin-top:2px';
+    wrap.appendChild(dn);wrap.appendChild(inp);
+    g.appendChild(wrap);
+  });
+}
+function applyPhotoGrid(){
+  var pairs=[];
+  document.querySelectorAll('#photoGrid input').forEach(function(inp){
+    var code=(inp.value||'').trim();
+    if(!code)return;
+    pairs.push({ds:inp.getAttribute('data-ds'),code:code});
+  });
+  if(!pairs.length){toast(LANG==='ar'?'لا رموز صالحة':'No valid codes');return;}
+  impPairs=pairs;
+  closeOv('photoOv');
+  renderImportPreview();
+  toast(LANG==='ar'?('جاهز لربط '+pairs.length+' يوماً'):('Ready to map '+pairs.length+' days'));
+}
 function openImport(){
   document.getElementById('impTA').value='';
   document.getElementById('impStart').value=dk(new Date(VY,VM,1));
@@ -1907,6 +2085,58 @@ function showGistHelp(){
     ?'الحصول على مفتاح GitHub (مرة واحدة، شخصي لك):\n\n1) من متصفح: github.com/settings/tokens\n2) "Generate new token" ← "Generate new token (classic)"\n3) الصلاحية (Scopes): فعّل "gist" فقط — لا شيء آخر.\n4) "Generate token" ← انسخ المفتاح (يبدأ بـ ghp_).\n5) هنا: الصقه في حقل "GitHub token" ← فعّل "تفعيل المزامنة السحابية".\n6) انسخ سكربت المزامنة من جديد (يحمل الآن رابط جدولك الخاص) والصقه في Scriptable.\n\nبعدها: Scriptable/الاختصار/الأتمتة تجلب دائماً آخر جدول عبر الإنترنت — حتى بدون فتح التطبيق. كل مستخدم آخر لهذا التطبيق يُنشئ مفتاحه وجدوله الخاص بمعزل تام عن غيره.\n\nملاحظة: كتابة التقويم نفسها لا تزال تحتاج فتح الهاتف (قيد iOS)، لكن الجدول المستخدَم سيكون الأحدث دائماً.'
     :'Get a GitHub token (one-time, personal to you):\n\n1) In a browser: github.com/settings/tokens\n2) "Generate new token" → "Generate new token (classic)"\n3) Scopes: enable "gist" only — nothing else.\n4) "Generate token" → copy it (starts with ghp_).\n5) Here: paste it into the "GitHub token" field → turn ON "Enable cloud sync".\n6) Copy the sync script again (it now embeds your own schedule URL) and paste it into Scriptable.\n\nAfterwards: Scriptable/Shortcut/automation always fetch your latest schedule over the network — even without opening the app. Any other user of this app creates their own token and gist, fully isolated from yours.\n\nNote: writing to the Calendar itself still needs the phone unlocked (an iOS restriction), but the schedule used will always be the freshest.');
 }
+// ── EXPORT CALENDAR AS IMAGE ──────────────────────────────────────────────────
+function exportCalendarImage(){
+  var y=VY,m=VM;
+  var cellW=104,cellH=118,headerH=84,wdH=40;
+  var first=new Date(y,m,1),last=new Date(y,m+1,0);
+  var startPad=first.getDay();
+  var totalCells=startPad+last.getDate();
+  var rows=Math.ceil(totalCells/7);
+  var W=cellW*7,H=headerH+wdH+rows*cellH;
+  var canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+  var x=canvas.getContext('2d');
+  var bg=ST.bgColor||'#0A0A12';
+  x.fillStyle=bg;x.fillRect(0,0,W,H);
+  var txCol=accentOn('#E8E8F8',bg);
+  x.fillStyle=txCol;x.textAlign='center';x.textBaseline='middle';
+  x.font='700 32px -apple-system,Helvetica,Arial,sans-serif';
+  x.fillText(localMonth(m)+' '+y,W/2,headerH/2);
+  var wd=(LANG==='ar')?AR.weekdays.map(function(s){return s.slice(0,3);}):WD_EN;
+  x.font='700 15px -apple-system,Helvetica,Arial,sans-serif';
+  x.fillStyle=accentOn('#5A5A80',bg);
+  for(var i=0;i<7;i++)x.fillText(wd[i],i*cellW+cellW/2,headerH+wdH/2);
+  var d=1-startPad;
+  for(var r=0;r<rows;r++){
+    for(var c=0;c<7;c++){
+      var cx=c*cellW,cy=headerH+wdH+r*cellH;
+      var date=new Date(y,m,d);
+      var inMonth=date.getMonth()===m;
+      var ds=dk(date);var sk=getShift(ds);var sh=SH[sk]||SH.off;
+      var cbg=SBG[sk]||'#111118',col=SC[sk]||'#4B5563';
+      x.globalAlpha=inMonth?1:0.32;
+      x.fillStyle=cbg;x.fillRect(cx+2,cy+2,cellW-4,cellH-4);
+      x.globalAlpha=1;
+      x.fillStyle=accentOn(col,cbg);
+      x.font='700 18px -apple-system,Helvetica,Arial,sans-serif';x.textAlign='left';x.textBaseline='top';
+      x.fillText(String(date.getDate()),cx+9,cy+8);
+      x.textAlign='center';x.textBaseline='middle';
+      x.font='30px -apple-system,Helvetica,Arial,sans-serif';
+      x.fillText(sh.e,cx+cellW/2,cy+cellH*0.44);
+      x.font='700 12px -apple-system,Helvetica,Arial,sans-serif';
+      x.fillText(sh.n,cx+cellW/2,cy+cellH*0.82);
+      d++;
+    }
+  }
+  canvas.toBlob(function(blob){
+    if(!blob)return;
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download='ShiftCalendar-'+y+'-'+String(m+1).padStart(2,'0')+'.png';
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(url);if(a.parentNode)a.parentNode.removeChild(a);},1500);
+  },'image/png');
+}
+
 // ── ADD TO CALENDAR (.ics, no app needed) ────────────────────────────────────
 function icsPad(n){return String(n).padStart(2,'0');}
 function icsLocal(y,mo,d,h,mi){return y+icsPad(mo+1)+icsPad(d)+'T'+icsPad(h)+icsPad(mi)+'00';}
