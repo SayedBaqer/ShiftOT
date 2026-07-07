@@ -757,8 +757,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-61';
-var APP_NOTE='إصلاح: أحداث التقويم عبر Scriptable لم تكن تحمل تنبيهاً فعلياً على الحدث نفسه — الآن يُضاف تنبيه تقويم حقيقي (كما في التصدير) حسب إعداد "التذكير قبل الوردية" / Fixed: Scriptable-synced calendar events had no real alert on the event itself. A native Calendar alarm is now added (matching the .ics export), driven by your "Remind before shift" setting.';
+var APP_VER='2026.07.07-62';
+var APP_NOTE='التنبيه ما زال يظهر "بلا"؟ أعد نسخ سكربت المزامنة (زر Copy sync script) والصقه في Scriptable، ثم زامن مرة أخرى — تقرير التشغيل الآن يُظهر عدد التنبيهات المضبوطة والمتحقق منها فعلياً وأي خطأ حصل / Alert still showing "None"? Re-copy the sync script (Copy sync script button) into Scriptable and sync again — the run report now shows exactly how many calendar alerts were set vs verified, and any real error.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -2076,7 +2076,7 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v13";');
+  L.push('const VER="v14";');
   L.push('const KKEY="shiftcal-data";');
   L.push('const GISTURL='+JSON.stringify(ST.gistOn?(ST.gistRawUrl||''):'')+';');
   L.push('(async()=>{');
@@ -2124,17 +2124,17 @@ function buildScriptable(){
   L.push('let wipeTo=new Date(start.getTime()+450*86400000);');
   L.push('let old=await CalendarEvent.between(wipeFrom,wipeTo,[cal]);');
   L.push('let wiped=0;for(let e of old){try{e.remove();wiped++;}catch(x){}}');
-  L.push('let made=0;');
-  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let ep=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);if(sd<start)continue;let ed=new Date(dp[0],dp[1]-1,dp[2],ep[0],ep[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";if(D.lead!=null&&D.lead>=0){let trig=new Date(sd.getTime()-D.lead*60000);try{ce.addAlert(Alarm.date(trig));}catch(ae){}}ce.save();made++;}');
+  L.push('let made=0;let calAlerts=0;let alarmErr="";');
+  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let ep=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);if(sd<start)continue;let ed=new Date(dp[0],dp[1]-1,dp[2],ep[0],ep[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";if(D.lead!=null&&D.lead>=0){let trig=new Date(sd.getTime()-D.lead*60000);try{ce.addAlert(Alarm.date(trig));calAlerts++;}catch(ae){if(!alarmErr)alarmErr=(ae&&ae.message?ae.message:String(ae));}}ce.save();made++;}');
   L.push('let pend=await Notification.allPending();for(let n of pend){if(n.identifier&&n.identifier.indexOf("shiftcal-")===0)n.remove();}');
   L.push('let now=new Date();let alarms=0;');
   L.push('if(D.lead!=null&&D.lead>=0){for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}}');
   L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
-  L.push('// Read-back verification: count what is ACTUALLY in the calendar now.');
-  L.push('let verifyN=0;try{verifyN=(await CalendarEvent.between(start,wipeTo,[cal])).length;}catch(e){}');
-  L.push('let sum="wiped "+wiped+" • wrote "+made+" • verified "+verifyN+" in \\""+cal.title+"\\" • alarms "+alarms+" • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
+  L.push('// Read-back verification: count what is ACTUALLY in the calendar now, INCLUDING whether the alert stuck.');
+  L.push('let verifyN=0;let verifyAlerts=0;try{let back=await CalendarEvent.between(start,wipeTo,[cal]);verifyN=back.length;for(let e of back){try{if(e.alarms&&e.alarms.length>0)verifyAlerts++;}catch(e2){}}}catch(e){}');
+  L.push('let sum="wiped "+wiped+" • wrote "+made+" • verified "+verifyN+" in \\""+cal.title+"\\" • cal-alerts set "+calAlerts+" • cal-alerts verified "+verifyAlerts+(alarmErr?(" • alertErr: "+alarmErr):"")+" • notif-alarms "+alarms+" • src: "+src+" • sched: "+(D.ts||"?")+(cacheOK?"":" • CACHE WRITE FAILED");');
   L.push('let inApp=(typeof config!=="undefined"&&config.runsInApp);');
-  L.push('let proven=(made>0&&verifyN>0);');
+  L.push('let proven=(made>0&&verifyN>0&&(D.lead==null||D.lead<0||verifyAlerts>0));'); // require the alert to actually stick when a lead time is set — don\'t silently claim success otherwise
   L.push('if(dl&&inApp&&proven){Script.complete();App.close();}'); // silent only when success is PROVEN by read-back
   L.push('else if(inApp){let a=new Alert();a.title="ShiftCal "+VER+(proven?" ✓":" ⚠️");a.message=sum+(D.ev.length?"\\nfirst: "+D.ev[0][0]+" "+D.ev[0][1]:"")+(prevRun?"\\nprev run: "+prevRun:"");a.addAction("OK");await a.present();Script.complete();}');
   L.push('else{let n=new Notification();n.identifier="shiftcal-run-report";n.title="ShiftCal "+VER+(proven?" ✓":" ⚠️");n.body=sum;n.setTriggerDate(new Date(Date.now()+2000));await n.schedule();Script.complete();}');
