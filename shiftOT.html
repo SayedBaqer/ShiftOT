@@ -483,35 +483,11 @@ input[type=time],input[type=number]{width:auto;}
   <div class="swipeHint">Swipe left or right to cancel</div>
   <div class="shs">
     <div id="photoStep1">
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">What does this photo show? (tap one)</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <div class="photoModeCard" id="photoModeCardGrid" onclick="setPhotoMode('grid')" style="flex:1;border-radius:12px;padding:10px;cursor:pointer;border:2px solid var(--bd);background:var(--s2)">
-          <div style="font-size:13px;font-weight:700">Calendar grid</div>
-          <div style="font-size:11px;color:var(--mu);margin-top:2px">7 columns, day + code per cell</div>
-        </div>
-        <div class="photoModeCard" id="photoModeCardTable" onclick="setPhotoMode('table')" style="flex:1;border-radius:12px;padding:10px;cursor:pointer;border:2px solid var(--bd);background:var(--s2)">
-          <div style="font-size:13px;font-weight:700">Team table</div>
-          <div style="font-size:11px;color:var(--mu);margin-top:2px">Many rows — pick your row</div>
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Which month does this photo show?</div>
-      <input type="month" id="photoMonth" style="width:auto;margin-bottom:10px"/>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:6px">Codes used in this photo (comma-separated)</div>
+      <input type="text" id="photoCodes" placeholder="e.g. V, OFF, A, M, N, E, B" style="margin-bottom:10px"/>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5">Reads the photo and finds only these codes, in order, then puts them in the paste box below (with the Excel/paste import) so you can confirm or fix the exact starting cell, order, and any misreads before dating them &mdash; direct manual control, no guessing about layout.</div>
       <button class="btn bp" onclick="runPhotoOCR()">&#128269; Read photo</button>
       <div id="photoStatus" style="font-size:11px;color:var(--mu);margin-top:8px;min-height:14px;line-height:1.5"></div>
-    </div>
-    <div id="photoStep2" style="display:none">
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Check &amp; fix any misread codes, then continue. Leave a cell blank to skip that day.</div>
-      <div id="photoGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px"></div>
-      <button class="btn bp" onclick="applyPhotoGrid()" style="margin-top:10px">&#10003; Use these codes</button>
-    </div>
-    <div id="photoRowPicker" style="display:none">
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Tap the row that is yours:</div>
-      <div id="photoRowList" style="max-height:340px;overflow-y:auto"></div>
-    </div>
-    <div id="photoStep3" style="display:none">
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Check &amp; fix each day, then continue. Leave a cell blank to skip that day.</div>
-      <div id="photoConfirmList" style="max-height:340px;overflow-y:auto"></div>
-      <button class="btn bp" onclick="applyPhotoTableRow()" style="margin-top:10px">&#10003; Use these codes</button>
     </div>
   </div>
 </div>
@@ -781,8 +757,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-59';
-var APP_NOTE='إصلاح اختيار وضع الصورة (بطاقات واضحة بدل مفتاحين) + لا يُعاد ضبطه عند اختيار صورة جديدة / Fixed the photo-mode selector (clear cards instead of two switches) + it no longer resets when picking a new photo.';
+var APP_VER='2026.07.07-60';
+var APP_NOTE='تبسيط استيراد الصورة: اكتب الرموز المستخدمة، يقرأ الصورة ويضعها في مربع اللصق لتؤكد بداية الشهر والترتيب بنفسك / Simplified photo import: specify your shift codes, it reads the photo and puts them in the paste box so you confirm the start date and order yourself.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1766,25 +1742,10 @@ function filterOcrWords(rawWords,imgHeight){
     return true;
   });
 }
-var photoMode='grid';
-function setPhotoMode(mode){
-  photoMode=mode;
-  var cg=document.getElementById('photoModeCardGrid'),ct=document.getElementById('photoModeCardTable');
-  if(cg)cg.style.borderColor=(mode==='grid')?'var(--indigo)':'var(--bd)';
-  if(cg)cg.style.background=(mode==='grid')?'rgba(129,140,248,.14)':'var(--s2)';
-  if(ct)ct.style.borderColor=(mode==='table')?'var(--indigo)':'var(--bd)';
-  if(ct)ct.style.background=(mode==='table')?'rgba(129,140,248,.14)':'var(--s2)';
-}
 function handlePhotoFile(file){
   if(!file)return;
   photoFileObj=file;
-  document.getElementById('photoMonth').value=VY+'-'+String(VM+1).padStart(2,'0');
-  document.getElementById('photoStep1').style.display='block';
-  document.getElementById('photoStep2').style.display='none';
-  document.getElementById('photoRowPicker').style.display='none';
-  document.getElementById('photoStep3').style.display='none';
   document.getElementById('photoStatus').textContent='';
-  setPhotoMode(photoMode); // keep whatever mode was last selected — do NOT force back to grid on every new pick
   document.getElementById('photoOv').classList.add('op');
 }
 // Upscale + grayscale + contrast-boost before OCR — meaningfully improves accuracy on photos of a screen
@@ -1819,46 +1780,8 @@ function preprocessImageForOCR(file){
     img.src=url;
   });
 }
-// Cluster OCR words into a 7-column grid, then map (row,col) to a real calendar date
-// via the standard first-weekday offset — so date accuracy never depends on OCR reading numbers correctly.
-function buildCalendarGridFromWords(words,y,m){
-  var xs=words.map(function(w){return w.cx;});
-  var minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs);
-  var colW=(maxX-minX+1)/7;
-  function colOf(cx){return Math.min(6,Math.max(0,Math.floor((cx-minX)/colW)));}
-  var hs=words.map(function(w){return w.h;}).slice().sort(function(a,b){return a-b;});
-  var medH=hs[Math.floor(hs.length/2)]||20;
-  var sorted=words.slice().sort(function(a,b){return a.cy-b.cy;});
-  var rows=[],cur=[],lastY=null;
-  sorted.forEach(function(w){
-    if(lastY!=null&&(w.cy-lastY)>medH*1.8){rows.push(cur);cur=[];}
-    cur.push(w);lastY=w.cy;
-  });
-  if(cur.length)rows.push(cur);
-  var cells={};
-  rows.forEach(function(rowWords,r){
-    rowWords.forEach(function(w){
-      var key=r+'-'+colOf(w.cx);
-      if(!cells[key])cells[key]=[];
-      cells[key].push(w.text);
-    });
-  });
-  var first=new Date(y,m,1);
-  var startPad=first.getDay();
-  var out=[];
-  for(var r=0;r<rows.length;r++){
-    for(var c=0;c<7;c++){
-      var idx=r*7+c-startPad;
-      var date=new Date(y,m,1+idx);
-      var tokens=cells[r+'-'+c]||[];
-      var codeToks=[];
-      tokens.forEach(function(tk){if(!/^\d{1,2}$/.test(tk)&&!/^[*•\-_]+$/.test(tk))codeToks.push(tk);});
-      out.push({ds:dk(date),code:codeToks.join(' ')});
-    }
-  }
-  return out;
-}
-// Team-table mode: cluster into rows only (any number of columns), no fixed 7-col assumption.
+// Cluster into rows only (any number of columns), sorted left-to-right within each row —
+// gives natural top-to-bottom, left-to-right reading order regardless of source layout.
 function clusterRowsOnly(words){
   var hs=words.map(function(w){return w.h;}).slice().sort(function(a,b){return a-b;});
   var medH=hs[Math.floor(hs.length/2)]||16;
@@ -1871,38 +1794,17 @@ function clusterRowsOnly(words){
   if(cur.length)rows.push(cur);
   return rows.map(function(r){return r.slice().sort(function(a,b){return a.cx-b.cx;});});
 }
-function findHeaderRowOCR(rows){
-  var best=-1,bestCount=0;
-  rows.forEach(function(row,i){
-    var cnt=row.filter(function(w){var n=parseInt(w.text,10);return /^\d{1,2}$/.test(w.text)&&n>=1&&n<=31;}).length;
-    if(cnt>bestCount){bestCount=cnt;best=i;}
-  });
-  return bestCount>=8?best:-1;
-}
-function alignRowToHeaderOCR(dataRow,headerRow){
-  if(!headerRow.length)return[];
-  var xs=headerRow.map(function(w){return w.cx;});
-  var span=(Math.max.apply(null,xs)-Math.min.apply(null,xs))/Math.max(1,headerRow.length-1);
-  var tol=Math.max(span*0.6,20);
-  var pairs=[];
-  dataRow.forEach(function(tok){
-    if(/^\d{1,2}$/.test(tok.text))return; // skip stray day-numbers that leaked into the data row
-    var bestH=null,bestDist=Infinity;
-    headerRow.forEach(function(h){var d=Math.abs(h.cx-tok.cx);if(d<bestDist){bestDist=d;bestH=h;}});
-    if(bestH&&bestDist<=tol){
-      var n=parseInt(bestH.text,10);
-      if(n>=1&&n<=31)pairs.push({day:n,code:tok.text});
-    }
-  });
-  return pairs;
-}
-var photoRowClusters=null,photoHeaderIdx=-1,photoTargetYM=null;
+// Simplified photo import: OCR the whole photo, keep only words matching the user's own
+// specified codes (case-insensitive), read them in natural row-by-row / left-to-right order,
+// then hand the raw sequence to the existing manual-paste textarea — the user directly fixes
+// the starting cell, ordering, or any misreads by editing text, instead of trusting auto-detected
+// grid/table layout (which repeatedly failed across several real source photos).
 async function runPhotoOCR(){
   var st=document.getElementById('photoStatus');
-  var mv=(document.getElementById('photoMonth').value||'').split('-');
-  if(mv.length!==2){toast(LANG==='ar'?'اختر الشهر':'Choose the month');return;}
-  var y=parseInt(mv[0],10),m=parseInt(mv[1],10)-1;
-  photoTargetYM={y:y,m:m};
+  var codesRaw=(document.getElementById('photoCodes').value||'').trim();
+  if(!codesRaw){toast(LANG==='ar'?'اكتب الرموز أولاً':'Type your codes first');return;}
+  var validCodes={};
+  codesRaw.split(/[,\n]/).forEach(function(c){var u=c.trim().toUpperCase();if(u)validCodes[u]=true;});
   st.textContent=t('Loading OCR (first time only, needs internet)…');
   try{ await loadTesseract(); }
   catch(e){ st.textContent=t('OCR needs internet the first time'); return; }
@@ -1921,107 +1823,22 @@ async function runPhotoOCR(){
       raw.push({text:w.text.trim(),cx:(b.x0+b.x1)/2,cy:(b.y0+b.y1)/2,h:(b.y1-b.y0)});
     });
     if(proc.url){URL.revokeObjectURL(proc.url);}
-    var words=filterOcrWords(raw,proc.h);
-    if(!words.length){st.textContent=t('No text recognized in the photo');return;}
-    if(photoMode==='grid'){
-      var grid=buildCalendarGridFromWords(words,y,m);
-      renderPhotoGrid(grid);
-      document.getElementById('photoStep1').style.display='none';
-      document.getElementById('photoStep2').style.display='block';
-    } else {
-      var rows=clusterRowsOnly(words);
-      photoRowClusters=rows;
-      photoHeaderIdx=findHeaderRowOCR(rows);
-      if(photoHeaderIdx<0){st.textContent=t('Could not find a row of day numbers (1-31) — try Calendar grid mode instead');return;}
-      renderPhotoRowPicker(rows,photoHeaderIdx);
-      document.getElementById('photoStep1').style.display='none';
-      document.getElementById('photoRowPicker').style.display='block';
-    }
+    var rows=clusterRowsOnly(raw);
+    var seq=[];
+    rows.forEach(function(row){
+      row.forEach(function(w){
+        var up=w.text.toUpperCase();
+        if(validCodes[up])seq.push(up);
+      });
+    });
+    if(!seq.length){st.textContent=t('None of your codes were found — check spelling and try again');return;}
+    document.getElementById('impTA').value=seq.join(', ');
+    closeOv('photoOv');
+    toast(LANG==='ar'?('وُجد '+seq.length+' رمزاً — راجعها ثم اضغط معاينة'):('Found '+seq.length+' codes — review, adjust the start date, then tap Preview'));
   }catch(e){
     if(proc&&proc.url)URL.revokeObjectURL(proc.url);
     st.textContent=(LANG==='ar'?'خطأ في القراءة: ':'Error reading: ')+(e&&e.message?e.message:e);
   }
-}
-function renderPhotoRowPicker(rows,headerIdx){
-  var list=document.getElementById('photoRowList');list.innerHTML='';
-  rows.forEach(function(row,ri){
-    if(ri<=headerIdx)return; // skip rows above/at the header — only real data rows are candidates
-    var preview=row.map(function(w){return w.text;}).join(' ');
-    if(!preview.trim())return;
-    var item=document.createElement('div');
-    item.style.cssText='padding:8px 10px;background:var(--s2);border-radius:8px;margin-bottom:5px;font-size:12px;cursor:pointer;border:2px solid transparent;word-break:break-word';
-    item.textContent=preview;
-    item.onclick=function(){selectPhotoRow(ri);};
-    list.appendChild(item);
-  });
-}
-function selectPhotoRow(ri){
-  var headerRow=photoRowClusters[photoHeaderIdx];
-  var dataRow=photoRowClusters[ri];
-  var pairs=alignRowToHeaderOCR(dataRow,headerRow);
-  if(!pairs.length){toast(LANG==='ar'?'لم تُطابَق أي رموز — جرّب صفاً آخر':'No codes matched — try another row');return;}
-  var dated=datesFromDayCodePairs(pairs,photoTargetYM.y,photoTargetYM.m);
-  renderPhotoConfirmList(dated);
-  document.getElementById('photoRowPicker').style.display='none';
-  document.getElementById('photoStep3').style.display='block';
-}
-function renderPhotoConfirmList(dated){
-  var list=document.getElementById('photoConfirmList');list.innerHTML='';
-  dated.sort(function(a,b){return a.ds<b.ds?-1:1;});
-  dated.forEach(function(item){
-    var d=pd(item.ds);
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:5px';
-    var lbl=document.createElement('div');
-    lbl.style.cssText='width:74px;flex-shrink:0;font-size:11px;color:var(--mu)';
-    lbl.textContent=fmtShort(d);
-    var inp=document.createElement('input');
-    inp.value=item.code||'';inp.setAttribute('data-ds',item.ds);
-    inp.style.cssText='flex:1;padding:6px 8px;font-size:12px';
-    row.appendChild(lbl);row.appendChild(inp);
-    list.appendChild(row);
-  });
-}
-function applyPhotoTableRow(){
-  var pairs=[];
-  document.querySelectorAll('#photoConfirmList input').forEach(function(inp){
-    var code=(inp.value||'').trim();
-    if(!code)return;
-    pairs.push({ds:inp.getAttribute('data-ds'),code:code});
-  });
-  if(!pairs.length){toast(LANG==='ar'?'لا رموز صالحة':'No valid codes');return;}
-  impPairs=pairs;
-  closeOv('photoOv');
-  renderImportPreview();
-  toast(LANG==='ar'?('جاهز لربط '+pairs.length+' يوماً'):('Ready to map '+pairs.length+' days'));
-}
-function renderPhotoGrid(grid){
-  var g=document.getElementById('photoGrid');g.innerHTML='';
-  var wd=(LANG==='ar')?AR.weekdays:WD_EN;
-  wd.forEach(function(nm){var h=document.createElement('div');h.style.cssText='font-size:9px;font-weight:700;color:var(--mu);text-align:center';h.textContent=String(nm).slice(0,3);g.appendChild(h);});
-  grid.forEach(function(cell){
-    var d=pd(cell.ds);
-    var wrap=document.createElement('div');
-    wrap.style.cssText='background:var(--s2);border-radius:6px;padding:4px;text-align:center';
-    var dn=document.createElement('div');dn.style.cssText='font-size:9px;color:var(--mu)';dn.textContent=d.getDate();
-    var inp=document.createElement('input');inp.value=cell.code||'';inp.setAttribute('data-ds',cell.ds);
-    inp.style.cssText='width:100%;padding:3px;font-size:11px;text-align:center;margin-top:2px';
-    wrap.appendChild(dn);wrap.appendChild(inp);
-    g.appendChild(wrap);
-  });
-}
-function applyPhotoGrid(){
-  var pairs=[];
-  document.querySelectorAll('#photoGrid input').forEach(function(inp){
-    var code=(inp.value||'').trim();
-    if(!code)return;
-    pairs.push({ds:inp.getAttribute('data-ds'),code:code});
-  });
-  if(!pairs.length){toast(LANG==='ar'?'لا رموز صالحة':'No valid codes');return;}
-  impPairs=pairs;
-  closeOv('photoOv');
-  renderImportPreview();
-  toast(LANG==='ar'?('جاهز لربط '+pairs.length+' يوماً'):('Ready to map '+pairs.length+' days'));
 }
 function openImport(){
   document.getElementById('impTA').value='';
@@ -2034,6 +1851,8 @@ function openImport(){
   var xrp=document.getElementById('xlsxRowPickUI');if(xrp){xrp.style.display='none';xrp.innerHTML='';}
   xlsxWb=null;xlsxTeamSheets=[];xlsxStrategyPairs=[];xlsxRowSelection={};
   var photoFileEl=document.getElementById('photoFile');if(photoFileEl)photoFileEl.value='';
+  var photoCodesEl=document.getElementById('photoCodes');if(photoCodesEl)photoCodesEl.value='';
+  var photoStEl=document.getElementById('photoStatus');if(photoStEl)photoStEl.textContent='';
   impPairs=[];
   document.getElementById('impOv').classList.add('op');
 }
@@ -2883,7 +2702,6 @@ startAutoTranslate();
 render();
 setupGridSel();
 setupSheetSwipe();
-setPhotoMode('grid');
 setupCalSwipe();
 checkUpdate();
 scheduleInApp();
