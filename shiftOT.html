@@ -450,6 +450,11 @@ input[type=time],input[type=number]{width:auto;}
     <button class="btn bp" onclick="document.getElementById('xlsxFile').click()">&#128194; Choose Excel File (.xlsx / .xls / .csv)</button>
     <div style="font-size:11px;color:var(--mu);margin:6px 0 4px;line-height:1.55">Best format: a <b style="color:var(--tx)">Date</b> column and a <b style="color:var(--tx)">Code</b> column, one row per day. Works across many months and multiple sheets at once — everything merges automatically below.</div>
     <div id="xlsxStatus" style="font-size:11px;color:var(--mu);min-height:14px"></div>
+    <div id="xlsxSheetsUI" style="display:none;margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">Match each sheet to its month</div>
+      <div id="xlsxSheetsList"></div>
+      <button class="btn bp" onclick="parseExcelWorkbook()" style="margin-top:4px">&#128269; Parse with these months</button>
+    </div>
     <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or paste manually &mdash;</div>
     <div style="font-size:13px;color:var(--mu);margin-bottom:9px;line-height:1.55">In Excel, select two rows and copy, then paste below:<br>&#8226; Row 1 &rarr; <b style="color:var(--tx)">dates</b> (e.g. 1/7/2026)<br>&#8226; Row 2 &rarr; <b style="color:var(--tx)">shift codes</b> (e.g. M, N, LM, O)<br><span style="color:#5A5A80">One row only = codes applied day-by-day from the start date.</span></div>
     <textarea id="impTA" placeholder="Paste here…" style="min-height:92px;font-family:'Courier New',monospace;font-size:12px"></textarea>
@@ -641,7 +646,8 @@ var AR={
   'Best format: a Date column and a Code column, one row per day. Works across many months and multiple sheets at once — everything merges automatically below.':'أفضل تنسيق: عمود التاريخ وعمود الرمز، صف واحد لكل يوم. يعمل عبر عدة أشهر وعدة أوراق دفعة واحدة — يُدمَج كل شيء تلقائياً أدناه.',
   '— or paste manually —':'— أو الصق يدوياً —',
   'Reading file…':'جارٍ قراءة الملف...','Excel import needs internet the first time (to load the parser)':'استيراد إكسل يحتاج اتصالاً بالإنترنت أول مرة (لتحميل أداة التحليل)',
-  'No usable data found in the file':'لم يُعثر على بيانات صالحة في الملف','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
+  'No usable data found in the file':'لم يُعثر على بيانات صالحة في الملف',
+  'Match each sheet to its month':'اربط كل ورقة بشهرها','🔍 Parse with these months':'🔍 تحليل بهذه الأشهر','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -708,8 +714,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-52';
-var APP_NOTE='استيراد ملفات إكسل (.xlsx/.xls/.csv) — عدة أشهر وعدة أوراق دفعة واحدة / Excel file import (.xlsx/.xls/.csv) — multiple months and sheets at once.';
+var APP_VER='2026.07.07-53';
+var APP_NOTE='اختر يدوياً الشهر المطابق لكل ورقة إكسل قبل التحليل / Manually match each Excel sheet to its month before parsing.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1399,7 +1405,10 @@ function excelSerialToDate(n){var d=new Date(1899,11,30);d.setDate(d.getDate()+M
 function cellToDate(v,ay,am){
   if(v==null||v==='')return null;
   if(v instanceof Date)return isNaN(v.getTime())?null:new Date(v.getFullYear(),v.getMonth(),v.getDate());
-  if(typeof v==='number')return excelSerialToDate(v);
+  if(typeof v==='number'){
+    if(v>=1&&v<=31&&ay!=null&&am!=null)return new Date(ay,am,v); // bare day-of-month number (real Excel serials for modern years are far larger)
+    return excelSerialToDate(v);
+  }
   return parseImpDate(String(v),ay,am);
 }
 function looksLikeHeader(s,words){var t=String(s||'').trim().toLowerCase();return words.some(function(w){return t.indexOf(w)>=0;});}
@@ -1468,32 +1477,63 @@ function parseSheetRows(rows,anchor){
   if(grid.length>best.length)best=grid;
   return best;
 }
+var xlsxWb=null;
+function monthInputVal(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 async function handleExcelFile(file){
   if(!file)return;
   var st=document.getElementById('xlsxStatus');
+  var ui=document.getElementById('xlsxSheetsUI');if(ui)ui.style.display='none';
+  xlsxWb=null;
   if(st)st.textContent=t('Reading file…');
   try{ await loadXLSX(); }
   catch(e){ if(st)st.textContent=t('Excel import needs internet the first time (to load the parser)'); return; }
   try{
     var buf=await file.arrayBuffer();
-    var wb=XLSX.read(buf,{type:'array',cellDates:true});
-    var anchor=new Date(VY,VM,1);
-    var all=[];
-    wb.SheetNames.forEach(function(name){
-      var ws=wb.Sheets[name];
-      var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
-      var sheetAnchor=parseSheetNameDate(name)||anchor;
-      all=all.concat(parseSheetRows(rows,sheetAnchor));
-    });
-    var byDate={};all.forEach(function(p){byDate[p.ds]=p.code;});
-    var dsList=Object.keys(byDate).sort();
-    impPairs=dsList.map(function(ds){return {ds:ds,code:byDate[ds]};});
-    if(!impPairs.length){if(st)st.textContent=t('No usable data found in the file');return;}
-    renderImportPreview();
-    if(st)st.textContent=(LANG==='ar'?('تم تحليل '+impPairs.length+' يوماً من '+wb.SheetNames.length+' ورقة ✓'):('Parsed '+impPairs.length+' days from '+wb.SheetNames.length+' sheet(s) ✓'));
+    xlsxWb=XLSX.read(buf,{type:'array',cellDates:true});
+    if(!xlsxWb.SheetNames.length){if(st)st.textContent=t('No usable data found in the file');return;}
+    renderSheetMonthPicker(xlsxWb);
+    if(st)st.textContent=(LANG==='ar'?('وجدتُ '+xlsxWb.SheetNames.length+' ورقة — أكّد الشهر لكل ورقة أدناه'):('Found '+xlsxWb.SheetNames.length+' sheet(s) — confirm the month for each below'));
   }catch(e){
     if(st)st.textContent=(LANG==='ar'?'خطأ في قراءة الملف: ':'Error reading file: ')+(e&&e.message?e.message:e);
   }
+}
+function renderSheetMonthPicker(wb){
+  var list=document.getElementById('xlsxSheetsList');if(!list)return;
+  list.innerHTML='';
+  var fallback=new Date(VY,VM,1);
+  wb.SheetNames.forEach(function(name){
+    var guess=parseSheetNameDate(name)||fallback;
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px';
+    var lbl=document.createElement('div');
+    lbl.style.cssText='flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    lbl.textContent=name;
+    var inp=document.createElement('input');
+    inp.type='month';inp.value=monthInputVal(guess);inp.setAttribute('data-sheet',name);
+    inp.style.cssText='width:auto;padding:6px 8px';
+    row.appendChild(lbl);row.appendChild(inp);
+    list.appendChild(row);
+  });
+  var ui=document.getElementById('xlsxSheetsUI');if(ui)ui.style.display='block';
+}
+function parseExcelWorkbook(){
+  if(!xlsxWb)return;
+  var st=document.getElementById('xlsxStatus');
+  var all=[];
+  document.querySelectorAll('#xlsxSheetsList input[type=month]').forEach(function(inp){
+    var name=inp.getAttribute('data-sheet');
+    var mv=(inp.value||'').split('-');
+    var anchor=(mv.length===2)?new Date(parseInt(mv[0],10),parseInt(mv[1],10)-1,1):new Date(VY,VM,1);
+    var ws=xlsxWb.Sheets[name];if(!ws)return;
+    var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    all=all.concat(parseSheetRows(rows,anchor));
+  });
+  var byDate={};all.forEach(function(p){byDate[p.ds]=p.code;});
+  var dsList=Object.keys(byDate).sort();
+  impPairs=dsList.map(function(ds){return {ds:ds,code:byDate[ds]};});
+  if(!impPairs.length){if(st)st.textContent=t('No usable data found in the file');return;}
+  renderImportPreview();
+  if(st)st.textContent=(LANG==='ar'?('تم تحليل '+impPairs.length+' يوماً من '+xlsxWb.SheetNames.length+' ورقة ✓'):('Parsed '+impPairs.length+' days from '+xlsxWb.SheetNames.length+' sheet(s) ✓'));
 }
 function openImport(){
   document.getElementById('impTA').value='';
@@ -1502,6 +1542,8 @@ function openImport(){
   document.getElementById('impPreview').innerHTML='';
   var xf=document.getElementById('xlsxFile');if(xf)xf.value='';
   var xs=document.getElementById('xlsxStatus');if(xs)xs.textContent='';
+  var xu=document.getElementById('xlsxSheetsUI');if(xu)xu.style.display='none';
+  xlsxWb=null;
   impPairs=[];
   document.getElementById('impOv').classList.add('op');
 }
