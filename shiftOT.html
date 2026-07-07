@@ -183,6 +183,19 @@ input[type=time],input[type=number]{width:auto;}
       <button class="btn bs" onclick="showScriptableHelp()" style="margin-top:6px">How to set up / كيفية الإعداد</button>
       <textarea id="scriptTA" readonly style="display:none;margin-top:8px;min-height:120px;font-family:'Courier New',monospace;font-size:10px"></textarea>
 
+      <div class="sct">Cloud Sync (Advanced, Optional)</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Makes Scriptable/Shortcuts always fetch your LATEST schedule over the network, even without opening the app first. Needs your own personal GitHub token (gist-only), kept only in this browser.</div>
+      <div class="sc2">
+        <div class="sr2" style="cursor:default">
+          <div><div class="sl2">Enable cloud sync</div><div class="ss2" id="gistDesc">Off</div></div>
+          <div class="tg" id="gistTog" onclick="togGist()"></div>
+        </div>
+        <div class="sr2" style="cursor:default;gap:9px">
+          <input type="password" id="ghTokenInp" placeholder="ghp_..." style="flex:1" onchange="savGhToken()"/>
+        </div>
+      </div>
+      <button class="btn bs" onclick="showGistHelp()">How to get a token / كيفية الحصول على المفتاح</button>
+
       <div class="sct">Cycle Start Date</div>
       <div class="sc2"><div class="sr2" style="cursor:default">
         <div><div class="sl2">Pattern Start</div><div class="ss2">Day 1 of your cycle</div></div>
@@ -601,6 +614,9 @@ var AR={
   'Auto-update calendar':'تحديث التقويم تلقائياً','After any edit, one tap refreshes everything':'بعد أي تعديل، ضغطة واحدة تحدّث كل شيء',
   '🔄 Sync calendar now':'🔄 مزامنة التقويم الآن','📋 Copy sync script (one-time setup)':'📋 نسخ سكربت المزامنة (إعداد مرة واحدة)',
   'The app keeps a dedicated iPhone calendar (“ShiftCal”) in sync: on every schedule edit it refreshes all its events and alarms via Scriptable — delete-all & rewrite, automatically.':'يحافظ التطبيق على تقويم مخصص في آيفون باسم ShiftCal: مع كل تعديل يحدّث كل أحداثه ومنبّهاته عبر Scriptable — حذف الكل وإعادة الكتابة، تلقائياً.',
+  'Cloud Sync (Advanced, Optional)':'مزامنة سحابية (متقدّم، اختياري)','Enable cloud sync':'تفعيل المزامنة السحابية',
+  'Makes Scriptable/Shortcuts always fetch your LATEST schedule over the network, even without opening the app first. Needs your own personal GitHub token (gist-only), kept only in this browser.':'يجعل Scriptable/الاختصارات تجلب دائماً آخر جدول عبر الإنترنت، حتى بدون فتح التطبيق أولاً. يحتاج مفتاح GitHub شخصياً بك (صلاحية gist فقط)، يُحفظ في هذا المتصفح فقط.',
+  'How to get a token / كيفية الحصول على المفتاح':'كيفية الحصول على المفتاح','Off':'إيقاف','On (publishing…)':'مفعّل (يُنشر...)',
   'Smart alerts: the app itself reminds you while it’s open, and the Scriptable automation covers you when it’s closed.':'تنبيهات ذكية: التطبيق يذكّرك أثناء فتحه، وأتمتة Scriptable تغطيك عندما يكون مغلقاً.',
   'Auto Reminders (Scriptable)':'تنبيهات تلقائية (Scriptable)','Remind before shift':'التذكير قبل الوردية',
   'Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.':'تنبيهات ورديات تلقائية على آيفون عبر تطبيق Scriptable المجاني + أتمتة يومية. الإعداد مرة واحدة، ويعيد الجدولة يومياً تلقائياً.',
@@ -672,8 +688,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-47';
-var APP_NOTE='اكتُشف السبب: iOS يمنع التقويم والهاتف مقفل — استخدم مشغّل "عند إيقاف المنبّه" / Root cause: iOS blocks Calendar while locked — use the When-Alarm-Stopped trigger.';
+var APP_VER='2026.07.07-48';
+var APP_NOTE='مزامنة سحابية اختيارية (Gist خاص): Scriptable يجلب دائماً آخر جدول عبر الإنترنت / Optional cloud sync (private Gist): Scriptable always fetches your latest schedule over the network.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -692,6 +708,7 @@ var ST={
   ov:{},nt:{},hl:{},ph:{},manualOT:{},otHours:{},otRateDay:{},otCfgUser:{},tp:[],clip:[],shCustom:{},
   otCfg:JSON.parse(JSON.stringify(DEF_OT)),
   otRate:0.317,otCurr:'BHD',offRate:1.5,phRate:1.5,linkCalOT:true,lang:'en',bgColor:'',remindLead:60,inApp:false,calSync:false,calName:'ShiftCal',lastSync:'',
+  gistOn:false,ghToken:'',gistId:'',gistRawUrl:'',lastGistHash:'',gistUpdatedAt:0,gistErr:'',
 };
 
 function loadST(){
@@ -699,7 +716,8 @@ function loadST(){
     var s=localStorage.getItem('sc_ot_v1');
     if(s){
       var p=JSON.parse(s);
-      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindLead','inApp','calSync','calName','lastSync','otCfgUser'];
+      var safeFields=['cs','pat','ov','nt','hl','ph','manualOT','otHours','otRateDay','tp','clip','shCustom','otRate','otCurr','offRate','phRate','linkCalOT','lang','bgColor','remindLead','inApp','calSync','calName','lastSync',
+        'gistOn','ghToken','gistId','gistRawUrl','lastGistHash','gistUpdatedAt','gistErr','otCfgUser'];
       safeFields.forEach(function(k){if(p[k]!==undefined)ST[k]=p[k];});
       if(!ST.ph)ST.ph={};
       if(!ST.manualOT)ST.manualOT={};
@@ -716,6 +734,13 @@ function loadST(){
       if(ST.remindLead==null)ST.remindLead=60;
       if(!ST.calName)ST.calName='ShiftCal';
       if(ST.lastSync==null)ST.lastSync='';
+      if(ST.gistOn==null)ST.gistOn=false;
+      if(!ST.ghToken)ST.ghToken='';
+      if(!ST.gistId)ST.gistId='';
+      if(!ST.gistRawUrl)ST.gistRawUrl='';
+      if(!ST.lastGistHash)ST.lastGistHash='';
+      if(!ST.gistUpdatedAt)ST.gistUpdatedAt=0;
+      if(!ST.gistErr)ST.gistErr='';
       if(ST.offRate==null)ST.offRate=1.5;
       if(ST.phRate==null)ST.phRate=1.5;
       if(ST.linkCalOT==null)ST.linkCalOT=true;
@@ -736,7 +761,7 @@ function loadST(){
 
 var _rsT=null;
 function savST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}
-  clearTimeout(_rsT);_rsT=setTimeout(function(){if(typeof scheduleInApp==='function')scheduleInApp();if(typeof maybeOfferSync==='function')maybeOfferSync();},400);}
+  clearTimeout(_rsT);_rsT=setTimeout(function(){if(typeof scheduleInApp==='function')scheduleInApp();if(typeof maybeOfferSync==='function')maybeOfferSync();if(typeof publishGist==='function')publishGist();},400);}
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function dk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1453,7 +1478,7 @@ function loadSettings(){
   var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#0A0A12';
   var rl=document.getElementById('remLead');if(rl)rl.value=String(ST.remindLead!=null?ST.remindLead:60);
   var cst=document.getElementById('calSyncTog');if(cst)cst.classList.toggle('on',!!ST.calSync);
-  updateInAppUI();
+  updateInAppUI();updateGistUI();
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
@@ -1563,8 +1588,9 @@ function updateInAppUI(){
 function buildScriptable(){
   var L=[];
   L.push('// ShiftCal calendar sync — install once, name it exactly: ShiftCal');
-  L.push('const VER="v11";');
+  L.push('const VER="v12";');
   L.push('const KKEY="shiftcal-data";');
+  L.push('const GISTURL='+JSON.stringify(ST.gistOn?(ST.gistRawUrl||''):'')+';');
   L.push('(async()=>{');
   L.push('try{ // global error reporter — any failure surfaces with its message');
   L.push('let p=(typeof args!=="undefined"&&args.queryParameters)?args.queryParameters:{};');
@@ -1573,8 +1599,10 @@ function buildScriptable(){
   L.push('try{let l=FileManager.local();stores.push({fm:l,fp:l.joinPath(l.documentsDirectory(),"shiftcal-data.json"),lr:l.joinPath(l.documentsDirectory(),"shiftcal-lastrun.txt")});}catch(e){}');
   L.push('try{let ic=FileManager.iCloud();stores.push({fm:ic,fp:ic.joinPath(ic.documentsDirectory(),"shiftcal-data.json"),lr:ic.joinPath(ic.documentsDirectory(),"shiftcal-lastrun.txt")});}catch(e){}');
   L.push('function valid(s){if(!s)return null;s=String(s).trim();if(s[0]!=="{")return null;try{let o=JSON.parse(s);return (o&&o.ev&&o.cal)?o:null;}catch(e){return null;}}');
-  L.push('// Compare link vs Keychain (shared app↔extension, container-proof) vs file copies. NEWEST payload (seq) wins.');
-  L.push('let cands=[];let dl=valid(p.data);if(dl)cands.push({d:dl,s:"link"});');
+  L.push('// Network fetch (freshest, works without opening the app) vs link vs Keychain vs file copies. NEWEST payload (seq) wins.');
+  L.push('let cands=[];');
+  L.push('if(GISTURL){try{let req=new Request(GISTURL+(GISTURL.indexOf("?")>=0?"&":"?")+"_="+Date.now());req.method="GET";let txt=await req.loadString();let dg=valid(txt);if(dg)cands.push({d:dg,s:"gist"});}catch(e){}}');
+  L.push('let dl=valid(p.data);if(dl)cands.push({d:dl,s:"link"});');
   L.push('try{if(Keychain.contains(KKEY)){let dk2=valid(Keychain.get(KKEY));if(dk2)cands.push({d:dk2,s:"keychain"});}}catch(e){}');
   L.push('for(let s0 of stores){try{if(s0.fm.fileExists(s0.fp)){try{await s0.fm.downloadFileFromiCloud(s0.fp);}catch(dd){}let df=valid(s0.fm.readString(s0.fp));if(df)cands.push({d:df,s:"saved"});}}catch(e){}}');
   L.push('let inApp0=(typeof config!=="undefined"&&config.runsInApp);');
@@ -1649,6 +1677,56 @@ function openURL(u){
   var a=document.createElement('a');a.href=u;a.style.display='none';
   document.body.appendChild(a);a.click();
   setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},1000);
+}
+// ── CLOUD SYNC (GitHub Gist) — lets Scriptable fetch the LATEST schedule over the network ──
+function ghHeaders(){return {'Authorization':'Bearer '+ST.ghToken,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
+function silentSaveST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}}
+function updateGistUI(){
+  var tg=document.getElementById('gistTog');if(tg)tg.classList.toggle('on',!!ST.gistOn);
+  var ti=document.getElementById('ghTokenInp');if(ti&&!ti.value&&ST.ghToken)ti.value=ST.ghToken;
+  var d=document.getElementById('gistDesc');if(!d)return;
+  if(!ST.gistOn)d.textContent=t('Off');
+  else if(ST.gistErr)d.textContent=(LANG==='ar'?'خطأ: ':'Error: ')+ST.gistErr;
+  else if(ST.gistUpdatedAt)d.textContent=(LANG==='ar'?'مفعّل — آخر نشر ':'On — last published ')+new Date(ST.gistUpdatedAt).toLocaleString(LANG==='ar'?'ar':'en-GB');
+  else d.textContent=t('On (publishing…)');
+}
+async function publishGist(){
+  if(!ST.gistOn||!ST.ghToken||typeof fetch==='undefined')return;
+  var h=schedHash();if(ST.lastGistHash===h)return;
+  var payload=buildSyncPayload();
+  var body={description:'ShiftCal schedule (auto-published — do not edit manually)',public:false,files:{'shiftcal-schedule.json':{content:JSON.stringify(payload)}}};
+  try{
+    if(!ST.gistId){
+      var r=await fetch('https://api.github.com/gists',{method:'POST',headers:ghHeaders(),body:JSON.stringify(body)});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      var j=await r.json();
+      ST.gistId=j.id;
+      ST.gistRawUrl='https://gist.githubusercontent.com/'+(j.owner?j.owner.login:'')+'/'+j.id+'/raw/shiftcal-schedule.json';
+    } else {
+      var r2=await fetch('https://api.github.com/gists/'+ST.gistId,{method:'PATCH',headers:ghHeaders(),body:JSON.stringify(body)});
+      if(!r2.ok)throw new Error('HTTP '+r2.status);
+    }
+    ST.lastGistHash=h;ST.gistErr='';ST.gistUpdatedAt=Date.now();
+    silentSaveST();updateGistUI();
+  }catch(e){
+    ST.gistErr=String((e&&e.message)||e);silentSaveST();updateGistUI();
+  }
+}
+function togGist(){
+  ST.gistOn=!ST.gistOn;savST();updateGistUI();
+  if(ST.gistOn)publishGist();
+}
+function savGhToken(){
+  var v=document.getElementById('ghTokenInp').value.trim();
+  if(v!==ST.ghToken){ST.ghToken=v;ST.gistId='';ST.gistRawUrl='';ST.lastGistHash='';ST.gistErr='';}
+  savST();updateGistUI();
+  if(ST.gistOn)publishGist();
+  toast(t('Saved ✓'));
+}
+function showGistHelp(){
+  alert(LANG==='ar'
+    ?'الحصول على مفتاح GitHub (مرة واحدة، شخصي لك):\n\n1) من متصفح: github.com/settings/tokens\n2) "Generate new token" ← "Generate new token (classic)"\n3) الصلاحية (Scopes): فعّل "gist" فقط — لا شيء آخر.\n4) "Generate token" ← انسخ المفتاح (يبدأ بـ ghp_).\n5) هنا: الصقه في حقل "GitHub token" ← فعّل "تفعيل المزامنة السحابية".\n6) انسخ سكربت المزامنة من جديد (يحمل الآن رابط جدولك الخاص) والصقه في Scriptable.\n\nبعدها: Scriptable/الاختصار/الأتمتة تجلب دائماً آخر جدول عبر الإنترنت — حتى بدون فتح التطبيق. كل مستخدم آخر لهذا التطبيق يُنشئ مفتاحه وجدوله الخاص بمعزل تام عن غيره.\n\nملاحظة: كتابة التقويم نفسها لا تزال تحتاج فتح الهاتف (قيد iOS)، لكن الجدول المستخدَم سيكون الأحدث دائماً.'
+    :'Get a GitHub token (one-time, personal to you):\n\n1) In a browser: github.com/settings/tokens\n2) "Generate new token" → "Generate new token (classic)"\n3) Scopes: enable "gist" only — nothing else.\n4) "Generate token" → copy it (starts with ghp_).\n5) Here: paste it into the "GitHub token" field → turn ON "Enable cloud sync".\n6) Copy the sync script again (it now embeds your own schedule URL) and paste it into Scriptable.\n\nAfterwards: Scriptable/Shortcut/automation always fetch your latest schedule over the network — even without opening the app. Any other user of this app creates their own token and gist, fully isolated from yours.\n\nNote: writing to the Calendar itself still needs the phone unlocked (an iOS restriction), but the schedule used will always be the freshest.');
 }
 function syncNow(){
   var payload=buildSyncPayload();
