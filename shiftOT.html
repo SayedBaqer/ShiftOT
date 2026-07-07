@@ -160,6 +160,7 @@ input[type=time],input[type=number]{width:auto;}
         <div class="sr2" style="cursor:default">
           <div><div class="sl2">Remind before shift</div></div>
           <select id="remLead" onchange="savRemLead()" style="width:auto;padding:7px 10px">
+            <option value="-1">Off / No alarm</option>
             <option value="0">At shift start</option>
             <option value="15">15 min before</option>
             <option value="30">30 min before</option>
@@ -630,7 +631,7 @@ var AR={
   'Auto Reminders (Scriptable)':'تنبيهات تلقائية (Scriptable)','Remind before shift':'التذكير قبل الوردية',
   'Automatic shift alarms on iPhone using the free Scriptable app + a daily automation. Set it up once — it re-schedules itself every day.':'تنبيهات ورديات تلقائية على آيفون عبر تطبيق Scriptable المجاني + أتمتة يومية. الإعداد مرة واحدة، ويعيد الجدولة يومياً تلقائياً.',
   '📋 Copy Scriptable script':'📋 نسخ سكربت Scriptable','How to set up / كيفية الإعداد':'كيفية الإعداد',
-  'At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
+  'Off / No alarm':'إيقاف / بلا تنبيه','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -697,8 +698,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-50';
-var APP_NOTE='توضيح: بلا Scriptable لا يمكن الحذف — إضافة سريعة تتكرر vs مزامنة Scriptable بلا تكرار / Clarified: no-app Quick Add duplicates on repeat vs Scriptable Sync which never duplicates.';
+var APP_VER='2026.07.07-51';
+var APP_NOTE='إمكانية إيقاف/تشغيل تنبيه الوردية بالكامل من "التذكير قبل الوردية" / Alarm can now be fully enabled or disabled from the Remind-before-shift setting.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1559,6 +1560,7 @@ function scheduleInApp(){
   clearInAppTimers();
   if(!ST.inApp)return;
   var lead=parseInt(ST.remindLead!=null?ST.remindLead:60,10);
+  if(lead<0)return;
   var now=new Date();
   for(var i=0;i<3;i++){
     var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
@@ -1649,7 +1651,7 @@ function buildScriptable(){
   L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let ep=ev[3].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);if(sd<start)continue;let ed=new Date(dp[0],dp[1]-1,dp[2],ep[0],ep[1]);if(ed<=sd)ed=new Date(ed.getTime()+86400000);let ce=new CalendarEvent();ce.calendar=cal;ce.title=ev[1];ce.startDate=sd;ce.endDate=ed;ce.notes="ShiftCal";ce.save();made++;}');
   L.push('let pend=await Notification.allPending();for(let n of pend){if(n.identifier&&n.identifier.indexOf("shiftcal-")===0)n.remove();}');
   L.push('let now=new Date();let alarms=0;');
-  L.push('for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}');
+  L.push('if(D.lead!=null&&D.lead>=0){for(let ev of D.ev){let dp=ev[0].split("-").map(Number);let sp=ev[2].split(":").map(Number);let sd=new Date(dp[0],dp[1]-1,dp[2],sp[0],sp[1]);let trig=new Date(sd.getTime()-D.lead*60000);if(trig<=now)continue;let n=new Notification();n.identifier="shiftcal-"+ev[0];n.title=D.title;n.body=ev[1]+" • "+ev[2];n.sound="default";n.setTriggerDate(trig);await n.schedule();alarms++;}}');
   L.push('if(ageDays>35){let n=new Notification();n.identifier="shiftcal-stale";n.title="ShiftCal";n.body="Schedule data is "+ageDays+" days old — open the app and tap Sync now.";n.sound="default";n.setTriggerDate(new Date(Date.now()+5000));await n.schedule();}');
   L.push('// Read-back verification: count what is ACTUALLY in the calendar now.');
   L.push('let verifyN=0;try{verifyN=(await CalendarEvent.between(start,wipeTo,[cal])).length;}catch(e){}');
@@ -1758,7 +1760,7 @@ function buildICSFromPayload(payload){
     L.push('DTEND:'+icsLocal(endD.getFullYear(),endD.getMonth(),endD.getDate(),endD.getHours(),endD.getMinutes()));
     L.push('SUMMARY:'+icsEsc(ev[1]));
     L.push('DESCRIPTION:'+icsEsc(ev[2]+' - '+ev[3]));
-    if(payload.lead!=null){
+    if(payload.lead!=null&&payload.lead>=0){
       L.push('BEGIN:VALARM');
       L.push('ACTION:DISPLAY');
       L.push('DESCRIPTION:'+icsEsc(ev[1]));
