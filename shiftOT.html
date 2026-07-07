@@ -775,8 +775,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-56';
-var APP_NOTE='وضع "جدول فريق" لاستيراد الإكسل والصور (اختر صفّك)، زر التصدير في الشريط العلوي / New "Team table" mode for Excel/photo import (pick your row), export button moved to the top bar.';
+var APP_VER='2026.07.07-58';
+var APP_NOTE='إصلاح استيراد الصورة + حفظ الصورة المصدَّرة مباشرة في الصور عبر ورقة المشاركة / Fixed photo import + export image saves directly to Photos via the Share Sheet.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1737,8 +1737,20 @@ var photoFileObj=null;
 var MONTHNAMES_EN=['january','february','march','april','may','june','july','august','september','october','november','december'];
 var WEEKDAYNAMES_EN=['sun','sunday','mon','monday','tue','tuesday','wed','wednesday','thu','thursday','fri','friday','sat','saturday'];
 // Strip the month title and weekday header row from raw OCR words before grid-clustering.
+// Find the y-position of the weekday header row (Sun Mon Tue Wed Thu Fri Sat) by matching text, not layout —
+// this anchors the real grid regardless of how much chrome (nav bar, strip card, legend, status bar) sits above it.
+function findWeekdayRowY(rawWords){
+  var matches=rawWords.filter(function(w){
+    var t=w.text.toLowerCase().replace(/[^a-z]/g,'');
+    return WEEKDAYNAMES_EN.indexOf(t)>=0;
+  });
+  if(matches.length<3)return null;
+  matches.sort(function(a,b){return a.cy-b.cy;});
+  return matches[Math.floor(matches.length/2)].cy;
+}
 function filterOcrWords(rawWords,imgHeight){
-  var headerCut=imgHeight?imgHeight*0.12:0;
+  var wdY=findWeekdayRowY(rawWords);
+  var headerCut=wdY!=null?(wdY+5):(imgHeight?imgHeight*0.12:0);
   return rawWords.filter(function(w){
     if(w.cy<headerCut)return false;
     var t2=w.text.toLowerCase().replace(/[^a-z]/g,'');
@@ -2420,10 +2432,19 @@ function exportCalendarImage(){
       d++;
     }
   }
-  canvas.toBlob(function(blob){
+  var fname='ShiftCalendar-'+y+'-'+String(m+1).padStart(2,'0')+'.png';
+  canvas.toBlob(async function(blob){
     if(!blob){toast(LANG==='ar'?'تعذّر إنشاء الصورة':'Could not create the image');return;}
-    // iOS Safari unreliably honors <a download> for blob URLs (same issue we hit with the .ics export) —
-    // navigate directly so Safari shows the image natively; user saves via Share / long-press.
+    // Prefer the native Share Sheet — it has a direct "Save Image" action (one tap into Photos).
+    try{
+      var file=new File([blob],fname,{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:fname});
+        return;
+      }
+    }catch(e){ if(e&&e.name==='AbortError')return; /* user cancelled the share sheet — not an error */ }
+    // Fallback: iOS Safari unreliably honors <a download> for blob URLs — navigate directly so
+    // Safari shows the image natively; user saves via long-press → Save Image.
     var url=URL.createObjectURL(blob);
     openURL(url);
     setTimeout(function(){URL.revokeObjectURL(url);},4000);
