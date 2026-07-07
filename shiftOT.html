@@ -483,10 +483,16 @@ input[type=time],input[type=number]{width:auto;}
   <div class="swipeHint">Swipe left or right to cancel</div>
   <div class="shs">
     <div id="photoStep1">
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">What does this photo show?</div>
-      <div class="sc2" style="margin-bottom:10px">
-        <div class="sr2" onclick="setPhotoMode('grid')" style="cursor:pointer"><div class="sl2">Calendar grid</div><div class="ss2">7 columns, day + code stacked in each cell</div><div class="tg" id="photoModeGridTg"></div></div>
-        <div class="sr2" onclick="setPhotoMode('table')" style="cursor:pointer"><div class="sl2">Team table</div><div class="ss2">Many rows (people), day columns — pick your row</div><div class="tg" id="photoModeTableTg"></div></div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:8px">What does this photo show? (tap one)</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div class="photoModeCard" id="photoModeCardGrid" onclick="setPhotoMode('grid')" style="flex:1;border-radius:12px;padding:10px;cursor:pointer;border:2px solid var(--bd);background:var(--s2)">
+          <div style="font-size:13px;font-weight:700">Calendar grid</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">7 columns, day + code per cell</div>
+        </div>
+        <div class="photoModeCard" id="photoModeCardTable" onclick="setPhotoMode('table')" style="flex:1;border-radius:12px;padding:10px;cursor:pointer;border:2px solid var(--bd);background:var(--s2)">
+          <div style="font-size:13px;font-weight:700">Team table</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">Many rows — pick your row</div>
+        </div>
       </div>
       <div style="font-size:12px;color:var(--mu);margin-bottom:8px">Which month does this photo show?</div>
       <input type="month" id="photoMonth" style="width:auto;margin-bottom:10px"/>
@@ -775,8 +781,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-58';
-var APP_NOTE='إصلاح استيراد الصورة + حفظ الصورة المصدَّرة مباشرة في الصور عبر ورقة المشاركة / Fixed photo import + export image saves directly to Photos via the Share Sheet.';
+var APP_VER='2026.07.07-59';
+var APP_NOTE='إصلاح اختيار وضع الصورة (بطاقات واضحة بدل مفتاحين) + لا يُعاد ضبطه عند اختيار صورة جديدة / Fixed the photo-mode selector (clear cards instead of two switches) + it no longer resets when picking a new photo.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1763,9 +1769,11 @@ function filterOcrWords(rawWords,imgHeight){
 var photoMode='grid';
 function setPhotoMode(mode){
   photoMode=mode;
-  var gt=document.getElementById('photoModeGridTg'),tt=document.getElementById('photoModeTableTg');
-  if(gt)gt.classList.toggle('on',mode==='grid');
-  if(tt)tt.classList.toggle('on',mode==='table');
+  var cg=document.getElementById('photoModeCardGrid'),ct=document.getElementById('photoModeCardTable');
+  if(cg)cg.style.borderColor=(mode==='grid')?'var(--indigo)':'var(--bd)';
+  if(cg)cg.style.background=(mode==='grid')?'rgba(129,140,248,.14)':'var(--s2)';
+  if(ct)ct.style.borderColor=(mode==='table')?'var(--indigo)':'var(--bd)';
+  if(ct)ct.style.background=(mode==='table')?'rgba(129,140,248,.14)':'var(--s2)';
 }
 function handlePhotoFile(file){
   if(!file)return;
@@ -1776,7 +1784,7 @@ function handlePhotoFile(file){
   document.getElementById('photoRowPicker').style.display='none';
   document.getElementById('photoStep3').style.display='none';
   document.getElementById('photoStatus').textContent='';
-  setPhotoMode('grid');
+  setPhotoMode(photoMode); // keep whatever mode was last selected — do NOT force back to grid on every new pick
   document.getElementById('photoOv').classList.add('op');
 }
 // Upscale + grayscale + contrast-boost before OCR — meaningfully improves accuracy on photos of a screen
@@ -2875,6 +2883,7 @@ startAutoTranslate();
 render();
 setupGridSel();
 setupSheetSwipe();
+setPhotoMode('grid');
 setupCalSwipe();
 checkUpdate();
 scheduleInApp();
