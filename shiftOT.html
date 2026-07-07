@@ -755,8 +755,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-54';
-var APP_NOTE='استيراد من صورة تقويم (تعرّف ضوئي) وتصدير الشهر كصورة / Import from a calendar photo (OCR) and export the month as an image.';
+var APP_VER='2026.07.07-55';
+var APP_NOTE='إصلاح زر تصدير الصورة على آيفون (تنقّل مباشر بدل التنزيل القسري) / Fixed image export on iPhone (direct navigation instead of forced download).';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1429,17 +1429,31 @@ function parseImpDate(s,ay,am){
   return null;
 }
 // ── EXCEL FILE IMPORT (.xlsx/.xls/.csv) — multi-sheet, multi-month, tidy or grid layout ──
+// Try each URL in turn (falls back if a CDN is blocked/unreachable); always resolves or rejects — never hangs silently.
+function loadScriptWithFallback(urls,timeoutMs){
+  return new Promise(function(resolve,reject){
+    var done=false;
+    var timer=setTimeout(function(){if(done)return;done=true;reject(new Error('timeout'));},timeoutMs||20000);
+    function tryNext(i){
+      if(done)return;
+      if(i>=urls.length){done=true;clearTimeout(timer);reject(new Error('all sources failed'));return;}
+      var s=document.createElement('script');
+      s.src=urls[i];
+      s.onload=function(){if(done)return;done=true;clearTimeout(timer);resolve();};
+      s.onerror=function(){if(s.parentNode)s.parentNode.removeChild(s);tryNext(i+1);};
+      document.head.appendChild(s);
+    }
+    tryNext(0);
+  });
+}
 var XLSX_LOADING=null;
 function loadXLSX(){
   if(typeof XLSX!=='undefined')return Promise.resolve();
   if(XLSX_LOADING)return XLSX_LOADING;
-  XLSX_LOADING=new Promise(function(resolve,reject){
-    var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-    s.onload=function(){resolve();};
-    s.onerror=function(){XLSX_LOADING=null;reject(new Error('offline'));};
-    document.head.appendChild(s);
-  });
+  XLSX_LOADING=loadScriptWithFallback([
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ],20000).catch(function(e){XLSX_LOADING=null;throw e;});
   return XLSX_LOADING;
 }
 function excelSerialToDate(n){var d=new Date(1899,11,30);d.setDate(d.getDate()+Math.floor(n));return d;}
@@ -1581,13 +1595,10 @@ var TESS_LOADING=null;
 function loadTesseract(){
   if(typeof Tesseract!=='undefined')return Promise.resolve();
   if(TESS_LOADING)return TESS_LOADING;
-  TESS_LOADING=new Promise(function(resolve,reject){
-    var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    s.onload=function(){resolve();};
-    s.onerror=function(){TESS_LOADING=null;reject(new Error('offline'));};
-    document.head.appendChild(s);
-  });
+  TESS_LOADING=loadScriptWithFallback([
+    'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+    'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'
+  ],20000).catch(function(e){TESS_LOADING=null;throw e;});
   return TESS_LOADING;
 }
 var photoFileObj=null;
@@ -2129,11 +2140,12 @@ function exportCalendarImage(){
     }
   }
   canvas.toBlob(function(blob){
-    if(!blob)return;
+    if(!blob){toast(LANG==='ar'?'تعذّر إنشاء الصورة':'Could not create the image');return;}
+    // iOS Safari unreliably honors <a download> for blob URLs (same issue we hit with the .ics export) —
+    // navigate directly so Safari shows the image natively; user saves via Share / long-press.
     var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download='ShiftCalendar-'+y+'-'+String(m+1).padStart(2,'0')+'.png';
-    document.body.appendChild(a);a.click();
-    setTimeout(function(){URL.revokeObjectURL(url);if(a.parentNode)a.parentNode.removeChild(a);},1500);
+    openURL(url);
+    setTimeout(function(){URL.revokeObjectURL(url);},4000);
   },'image/png');
 }
 
