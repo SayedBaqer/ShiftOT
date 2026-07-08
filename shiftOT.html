@@ -91,6 +91,7 @@ input[type=time],input[type=number]{width:auto;}
 .sl2{font-size:14px;font-weight:500;}
 .ss2{font-size:12px;color:var(--mu);margin-top:1px;}
 .sct{font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.08em;text-transform:uppercase;margin:13px 0 6px;}
+.setChev{color:var(--mu);font-size:18px;font-weight:700;flex-shrink:0;margin-left:8px;}
 .tg{width:42px;height:25px;border-radius:13px;background:var(--bd);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
 .tg.on{background:#818CF8;}
 .tg::after{content:'';position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;}
@@ -131,144 +132,177 @@ input[type=time],input[type=number]{width:auto;}
 
     <!-- SETTINGS PAGE -->
     <div id="setPage" style="display:none;padding:14px">
-      <div class="sct">Language &amp; Display</div>
-      <div class="sc2">
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Language / اللغة</div></div>
-          <select id="langSel" onchange="savLang()" style="width:auto;padding:7px 10px">
-            <option value="en">English</option>
-            <option value="ar">العربية</option>
-          </select>
+      <div id="setMenu">
+        <div class="sc2">
+          <div class="sr2" onclick="openSetSub('setSubDisplay')"><div class="sl2">Language &amp; Display</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubGeneral')"><div class="sl2">General</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubSync')"><div class="sl2">Calendar Sync — Recommended (no duplicates)</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubCycle')"><div class="sl2">Cycle Start Date</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubCurrency')"><div class="sl2">Currency &amp; Rate</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubAppearance')"><div class="sl2">Shift Appearance</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubOTCfg')"><div class="sl2">Overtime Config (per shift type)</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubPatterns')"><div class="sl2">Temporary Period Patterns</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubImport')"><div class="sl2">Import Schedule</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubGuide')"><div class="sl2">Guide</div><div class="setChev">&#8250;</div></div>
+          <div class="sr2" onclick="openSetSub('setSubReset')"><div class="sl2" style="color:var(--sick)">Reset</div><div class="setChev">&#8250;</div></div>
         </div>
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Background colour</div><div class="ss2">App background behind everything</div></div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div id="bgSwatch" onclick="openBgPicker()" style="width:46px;height:38px;border-radius:8px;background:#0A0A12;border:1px solid var(--bd);cursor:pointer"></div>
-            <button class="ib" onclick="resetBg()" title="Reset">&#8635;</button>
+        <div style="text-align:center;padding:16px 0;font-size:11px;color:#3A3A55">&copy; <span id="yr"></span> Sayed Baqer Alseb3 Limited. All rights reserved.<br/><span style="color:#5A5A80">Build <span id="verS"></span></span></div>
+      </div>
+
+      <div id="setSubWrap" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <button class="ib" onclick="closeSetSub()">&#8249;</button>
+          <div id="setSubTitle" style="font-size:18px;font-weight:700"></div>
+        </div>
+
+        <div class="setSub" id="setSubDisplay" style="display:none">
+          <div class="sc2">
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Language / اللغة</div></div>
+              <select id="langSel" onchange="savLang()" style="width:auto;padding:7px 10px">
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+              </select>
+            </div>
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Background colour</div><div class="ss2">App background behind everything</div></div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div id="bgSwatch" onclick="openBgPicker()" style="width:46px;height:38px;border-radius:8px;background:#0A0A12;border:1px solid var(--bd);cursor:pointer"></div>
+                <button class="ib" onclick="resetBg()" title="Reset">&#8635;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="setSub" id="setSubGeneral" style="display:none">
+          <div class="sc2"><div class="sr2" style="cursor:default">
+            <div><div class="sl2">Link Calendar &amp; Overtime dates</div><div class="ss2">Overtime range follows the month you view</div></div>
+            <div class="tg" id="linkTog" onclick="togLink()"></div>
+          </div></div>
+        </div>
+
+        <div class="setSub" id="setSubSync" style="display:none">
+          <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">A web page cannot delete calendar events — only the free Scriptable app can (real Calendar access). This keeps a dedicated &#8220;ShiftCal&#8221; calendar in sync: old events removed, new ones written, every time. One-time setup below, then just tap Sync after any edit.</div>
+          <div class="sc2">
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Remind before shift</div></div>
+              <select id="remLead" onchange="savRemLead()" style="width:auto;padding:7px 10px">
+                <option value="-1">Off / No alarm</option>
+                <option value="0">At shift start</option>
+                <option value="15">15 min before</option>
+                <option value="30">30 min before</option>
+                <option value="60">1 hour before</option>
+                <option value="120">2 hours before</option>
+                <option value="180">3 hours before</option>
+                <option value="720">12 hours before</option>
+              </select>
+            </div>
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Auto-update calendar</div><div class="ss2">After any edit, one tap refreshes everything</div></div>
+              <div class="tg" id="calSyncTog" onclick="togCalSync()"></div>
+            </div>
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">In-app alerts</div><div class="ss2" id="inAppDesc">Notify me when the app is open / installed</div></div>
+              <div class="tg" id="inAppTog" onclick="togInApp()"></div>
+            </div>
+          </div>
+          <button class="btn bp" onclick="syncNow()">&#128260; Sync calendar now</button>
+          <button class="btn bs" onclick="copyScriptable()" style="margin-top:6px">&#128203; Copy sync script (one-time setup)</button>
+          <button class="btn bs" onclick="showScriptableHelp()" style="margin-top:6px">How to set up / كيفية الإعداد</button>
+          <textarea id="scriptTA" readonly style="display:none;margin-top:8px;min-height:120px;font-family:'Courier New',monospace;font-size:10px"></textarea>
+
+          <div class="sct">Quick Add (no app — will duplicate on repeat)</div>
+          <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">No Scriptable needed, but a web page can only ADD events, never delete. Use this once for a fresh calendar; if you tap it again after edits, old entries stay and new ones pile up alongside them. For duplicate-free updates use Sync above instead.</div>
+          <button class="btn bs" onclick="addToCalendarICS()">&#128197; Add to Calendar (next 30 days)</button>
+
+          <div class="sct">Cloud Sync (Advanced, Optional)</div>
+          <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Makes Scriptable/Shortcuts always fetch your LATEST schedule over the network, even without opening the app first. Needs your own personal GitHub token (gist-only), kept only in this browser.</div>
+          <div class="sc2">
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Enable cloud sync</div><div class="ss2" id="gistDesc">Off</div></div>
+              <div class="tg" id="gistTog" onclick="togGist()"></div>
+            </div>
+            <div class="sr2" style="cursor:default;gap:9px">
+              <input type="password" id="ghTokenInp" placeholder="ghp_..." style="flex:1" onchange="savGhToken()"/>
+            </div>
+          </div>
+          <button class="btn bs" onclick="showGistHelp()">How to get a token / كيفية الحصول على المفتاح</button>
+        </div>
+
+        <div class="setSub" id="setSubCycle" style="display:none">
+          <div class="sc2"><div class="sr2" style="cursor:default">
+            <div><div class="sl2">Pattern Start</div><div class="ss2">Day 1 of your cycle</div></div>
+            <input type="date" id="csInput" style="width:auto" onchange="savCS(this.value)"/>
+          </div></div>
+        </div>
+
+        <div class="setSub" id="setSubCurrency" style="display:none">
+          <div class="sc2">
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Currency</div></div>
+              <select id="otCurr" onchange="savCurr()" style="width:auto;padding:7px 10px">
+                <option value="BHD">BHD - Bahrain Dinar</option>
+                <option value="USD">USD - US Dollar</option>
+                <option value="GBP">GBP - British Pound</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="AED">AED - UAE Dirham</option>
+                <option value="SAR">SAR - Saudi Riyal</option>
+                <option value="KWD">KWD - Kuwait Dinar</option>
+                <option value="QAR">QAR - Qatar Riyal</option>
+                <option value="OMR">OMR - Oman Rial</option>
+                <option value="EGP">EGP - Egyptian Pound</option>
+              </select>
+            </div>
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Hourly Rate</div><div class="ss2">Base pay per hour</div></div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span id="currSym" style="font-size:13px;color:var(--mu)">BD</span>
+                <input type="number" id="otRate" min="0" step="0.001" value="0.317" onchange="savRate()" style="width:90px"/>
+              </div>
+            </div>
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Off-Duty OT Rate</div><div class="ss2">Default &#215; when off/rest &#8594; duty</div></div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;color:var(--mu)">&#215;</span><input type="number" id="offRateInp" min="1" max="5" step="0.25" value="1.5" onchange="savOffRate()" style="width:72px"/></div>
+            </div>
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Public Holiday Rate</div><div class="ss2">Default &#215; for PH duty days</div></div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;color:var(--mu)">&#215;</span><input type="number" id="phRateInp" min="1" max="5" step="0.25" value="1.5" onchange="savPhRate()" style="width:72px"/></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="setSub" id="setSubAppearance" style="display:none">
+          <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Tap an emoji to change it (use your keyboard&#8217;s emoji), and pick a colour for each shift.</div>
+          <div id="shAppSec"></div>
+          <button class="btn bs" onclick="resetShiftAppearance()" style="margin-top:2px">&#8635; Reset appearance to default</button>
+        </div>
+
+        <div class="setSub" id="setSubOTCfg" style="display:none">
+          <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Set segments for each shift. Off&#8594;duty &amp; PH use the default rates above (override per day in the day editor). For normal days only extra OT-segment hours count as overtime pay.</div>
+          <div id="otCfgSec"></div>
+        </div>
+
+        <div class="setSub" id="setSubPatterns" style="display:none">
+          <div id="tpList"></div>
+          <button class="btn bs" onclick="openTpSh(null)" style="margin-top:4px">+ Add Temporary Period Pattern</button>
+        </div>
+
+        <div class="setSub" id="setSubImport" style="display:none">
+          <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Paste a rota from Excel (a row of dates and a row of shift codes) and map each code to a shift.</div>
+          <button class="btn bs" onclick="openImport()">&#128229; Import from Excel</button>
+        </div>
+
+        <div class="setSub" id="setSubGuide" style="display:none">
+          <div id="guideSec"></div>
+        </div>
+
+        <div class="setSub" id="setSubReset" style="display:none">
+          <div class="sc2">
+            <div class="sr2" onclick="resetOv()"><div class="sl2" style="color:var(--sick)">Clear All Overrides &amp; Notes</div></div>
+            <div class="sr2" onclick="resetAll()"><div class="sl2" style="color:var(--sick)">Full Reset</div></div>
           </div>
         </div>
       </div>
-
-      <div class="sct">General</div>
-      <div class="sc2"><div class="sr2" style="cursor:default">
-        <div><div class="sl2">Link Calendar &amp; Overtime dates</div><div class="ss2">Overtime range follows the month you view</div></div>
-        <div class="tg" id="linkTog" onclick="togLink()"></div>
-      </div></div>
-
-      <div class="sct">Calendar Sync — Recommended (no duplicates)</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">A web page cannot delete calendar events — only the free Scriptable app can (real Calendar access). This keeps a dedicated &#8220;ShiftCal&#8221; calendar in sync: old events removed, new ones written, every time. One-time setup below, then just tap Sync after any edit.</div>
-      <div class="sc2">
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Remind before shift</div></div>
-          <select id="remLead" onchange="savRemLead()" style="width:auto;padding:7px 10px">
-            <option value="-1">Off / No alarm</option>
-            <option value="0">At shift start</option>
-            <option value="15">15 min before</option>
-            <option value="30">30 min before</option>
-            <option value="60">1 hour before</option>
-            <option value="120">2 hours before</option>
-            <option value="180">3 hours before</option>
-            <option value="720">12 hours before</option>
-          </select>
-        </div>
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Auto-update calendar</div><div class="ss2">After any edit, one tap refreshes everything</div></div>
-          <div class="tg" id="calSyncTog" onclick="togCalSync()"></div>
-        </div>
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">In-app alerts</div><div class="ss2" id="inAppDesc">Notify me when the app is open / installed</div></div>
-          <div class="tg" id="inAppTog" onclick="togInApp()"></div>
-        </div>
-      </div>
-      <button class="btn bp" onclick="syncNow()">&#128260; Sync calendar now</button>
-      <button class="btn bs" onclick="copyScriptable()" style="margin-top:6px">&#128203; Copy sync script (one-time setup)</button>
-      <button class="btn bs" onclick="showScriptableHelp()" style="margin-top:6px">How to set up / كيفية الإعداد</button>
-      <textarea id="scriptTA" readonly style="display:none;margin-top:8px;min-height:120px;font-family:'Courier New',monospace;font-size:10px"></textarea>
-
-      <div class="sct">Quick Add (no app — will duplicate on repeat)</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">No Scriptable needed, but a web page can only ADD events, never delete. Use this once for a fresh calendar; if you tap it again after edits, old entries stay and new ones pile up alongside them. For duplicate-free updates use Sync above instead.</div>
-      <button class="btn bs" onclick="addToCalendarICS()">&#128197; Add to Calendar (next 30 days)</button>
-
-      <div class="sct">Cloud Sync (Advanced, Optional)</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Makes Scriptable/Shortcuts always fetch your LATEST schedule over the network, even without opening the app first. Needs your own personal GitHub token (gist-only), kept only in this browser.</div>
-      <div class="sc2">
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Enable cloud sync</div><div class="ss2" id="gistDesc">Off</div></div>
-          <div class="tg" id="gistTog" onclick="togGist()"></div>
-        </div>
-        <div class="sr2" style="cursor:default;gap:9px">
-          <input type="password" id="ghTokenInp" placeholder="ghp_..." style="flex:1" onchange="savGhToken()"/>
-        </div>
-      </div>
-      <button class="btn bs" onclick="showGistHelp()">How to get a token / كيفية الحصول على المفتاح</button>
-
-      <div class="sct">Cycle Start Date</div>
-      <div class="sc2"><div class="sr2" style="cursor:default">
-        <div><div class="sl2">Pattern Start</div><div class="ss2">Day 1 of your cycle</div></div>
-        <input type="date" id="csInput" style="width:auto" onchange="savCS(this.value)"/>
-      </div></div>
-
-      <div class="sct">Currency &amp; Rate</div>
-      <div class="sc2">
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Currency</div></div>
-          <select id="otCurr" onchange="savCurr()" style="width:auto;padding:7px 10px">
-            <option value="BHD">BHD - Bahrain Dinar</option>
-            <option value="USD">USD - US Dollar</option>
-            <option value="GBP">GBP - British Pound</option>
-            <option value="EUR">EUR - Euro</option>
-            <option value="AED">AED - UAE Dirham</option>
-            <option value="SAR">SAR - Saudi Riyal</option>
-            <option value="KWD">KWD - Kuwait Dinar</option>
-            <option value="QAR">QAR - Qatar Riyal</option>
-            <option value="OMR">OMR - Oman Rial</option>
-            <option value="EGP">EGP - Egyptian Pound</option>
-          </select>
-        </div>
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Hourly Rate</div><div class="ss2">Base pay per hour</div></div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span id="currSym" style="font-size:13px;color:var(--mu)">BD</span>
-            <input type="number" id="otRate" min="0" step="0.001" value="0.317" onchange="savRate()" style="width:90px"/>
-          </div>
-        </div>
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Off-Duty OT Rate</div><div class="ss2">Default &#215; when off/rest &#8594; duty</div></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;color:var(--mu)">&#215;</span><input type="number" id="offRateInp" min="1" max="5" step="0.25" value="1.5" onchange="savOffRate()" style="width:72px"/></div>
-        </div>
-        <div class="sr2" style="cursor:default">
-          <div><div class="sl2">Public Holiday Rate</div><div class="ss2">Default &#215; for PH duty days</div></div>
-          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;color:var(--mu)">&#215;</span><input type="number" id="phRateInp" min="1" max="5" step="0.25" value="1.5" onchange="savPhRate()" style="width:72px"/></div>
-        </div>
-      </div>
-
-      <div class="sct">Shift Appearance</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Tap an emoji to change it (use your keyboard&#8217;s emoji), and pick a colour for each shift.</div>
-      <div id="shAppSec"></div>
-      <button class="btn bs" onclick="resetShiftAppearance()" style="margin-top:2px">&#8635; Reset appearance to default</button>
-
-      <div class="sct">Overtime Config (per shift type)</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Set segments for each shift. Off&#8594;duty &amp; PH use the default rates above (override per day in the day editor). For normal days only extra OT-segment hours count as overtime pay.</div>
-      <div id="otCfgSec"></div>
-
-      <div class="sct">Temporary Period Patterns</div>
-      <div id="tpList"></div>
-      <button class="btn bs" onclick="openTpSh(null)" style="margin-top:4px">+ Add Temporary Period Pattern</button>
-
-      <div class="sct">Import Schedule</div>
-      <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Paste a rota from Excel (a row of dates and a row of shift codes) and map each code to a shift.</div>
-      <button class="btn bs" onclick="openImport()">&#128229; Import from Excel</button>
-
-
-      <div class="sct">Guide</div>
-      <div id="guideSec"></div>
-
-      <div class="sct">Reset</div>
-      <div class="sc2">
-        <div class="sr2" onclick="resetOv()"><div class="sl2" style="color:var(--sick)">Clear All Overrides &amp; Notes</div></div>
-        <div class="sr2" onclick="resetAll()"><div class="sl2" style="color:var(--sick)">Full Reset</div></div>
-      </div>
-      <div style="text-align:center;padding:16px 0;font-size:11px;color:#3A3A55">&copy; <span id="yr"></span> Sayed Baqer Alseb3 Limited. All rights reserved.<br/><span style="color:#5A5A80">Build <span id="verS"></span></span></div>
     </div>
 
     <!-- OT PAGE -->
@@ -757,8 +791,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.07-66';
-var APP_NOTE='إصلاح جذري في معالجة الصورة: التلوين السابق كان يُضعف التباين على خلايا بألوان غامقة (أزرق/أخضر غامق) بدل تحسينه. الآن تُقارَن كل نقطة بمتوسط محيطها المحلي بدل عتبة واحدة للصورة كلها، فيُفصل النص عن أي لون خلفية بدقة / Real fix in image preprocessing: the previous contrast step actually weakened contrast on darker-colored cells (blue/dark-green) instead of improving it. Each pixel is now compared to its own local neighborhood average instead of one whole-image threshold, correctly separating text from any background color.';
+var APP_VER='2026.07.08-67';
+var APP_NOTE='الإعدادات الآن مقسّمة إلى صفحات فرعية بدل صفحة طويلة واحدة — اضغط أي قسم لفتحه، وزر الرجوع للعودة للقائمة / Settings is now split into sub-pages instead of one long scrolling page — tap a section to open it, use the back arrow to return to the menu.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1012,6 +1046,25 @@ function otRangeChanged(){
 }
 document.getElementById('patBtn').onclick=openPat;
 
+var SET_SUB_TITLES={
+  setSubDisplay:'Language & Display',setSubGeneral:'General',
+  setSubSync:'Calendar Sync — Recommended (no duplicates)',
+  setSubCycle:'Cycle Start Date',setSubCurrency:'Currency & Rate',
+  setSubAppearance:'Shift Appearance',setSubOTCfg:'Overtime Config (per shift type)',
+  setSubPatterns:'Temporary Period Patterns',setSubImport:'Import Schedule',
+  setSubGuide:'Guide',setSubReset:'Reset'
+};
+function openSetSub(id){
+  document.getElementById('setMenu').style.display='none';
+  document.getElementById('setSubWrap').style.display='block';
+  document.querySelectorAll('.setSub').forEach(function(el){el.style.display=(el.id===id)?'block':'none';});
+  document.getElementById('setSubTitle').textContent=t(SET_SUB_TITLES[id]||'');
+  document.getElementById('cnt').scrollTop=0;
+}
+function closeSetSub(){
+  document.getElementById('setSubWrap').style.display='none';
+  document.getElementById('setMenu').style.display='block';
+}
 function showTab(t){
   curTab=t;
   var calIds=['cgr','todayStrip','leg'];
@@ -1030,6 +1083,7 @@ function showTab(t){
     wd.style.display='none';
     document.getElementById('setPage').style.display='block';
     document.getElementById('otPage').style.display='none';
+    closeSetSub();
     loadSettings();
   } else if(t==='ot'){
     calIds.forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});
