@@ -791,8 +791,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.08-67';
-var APP_NOTE='الإعدادات الآن مقسّمة إلى صفحات فرعية بدل صفحة طويلة واحدة — اضغط أي قسم لفتحه، وزر الرجوع للعودة للقائمة / Settings is now split into sub-pages instead of one long scrolling page — tap a section to open it, use the back arrow to return to the menu.';
+var APP_VER='2026.07.08-68';
+var APP_NOTE='يمكنك الآن السحب لليمين للرجوع من صفحة إعدادات فرعية إلى القائمة، والسحب يميناً/يساراً للتنقل بين التقويم والإضافي والإعدادات (شهر التقويم يبقى بالسحب كما هو) / You can now swipe right to go back from a settings sub-page to the menu, and swipe left/right to move between Calendar, Overtime and Settings (the Calendar tab still uses swipe for changing months).';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1409,6 +1409,10 @@ function clearMulti(){
 }
 
 // ── CALENDAR SWIPE (prev/next month) ─────────────────────────────────────────
+// Swipe order for tab-switching: Calendar → Overtime → Settings. Swipe right = previous tab,
+// swipe left = next tab — the same direction convention as the settings sub-page back-swipe below,
+// so "swipe right" always means "go back" throughout the app.
+var TAB_ORDER=['cal','ot','set'];
 function setupCalSwipe(){
   var cnt=document.getElementById('cnt');if(!cnt)return;
   var sx=0,sy=0,active=false;
@@ -1418,12 +1422,23 @@ function setupCalSwipe(){
   },{passive:true});
   cnt.addEventListener('touchend',function(e){
     if(!active){return;}active=false;
-    if(curTab!=='cal'||selMode||suppressTap)return;
+    if(selMode||suppressTap)return;
     var t=e.changedTouches[0];var dx=t.clientX-sx,dy=t.clientY-sy;
-    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.4){
+    if(Math.abs(dx)<=55||Math.abs(dx)<=Math.abs(dy)*1.4)return;
+    if(curTab==='cal'){
+      // Calendar tab keeps its existing swipe = change month (higher-value gesture here than tab-switching).
       if(dx>0){VM--;if(VM<0){VM=11;VY--;}}else{VM++;if(VM>11){VM=0;VY++;}}
       render();afterNav();
+      return;
     }
+    if(curTab==='set'&&document.getElementById('setSubWrap').style.display!=='none'){
+      if(dx>0)closeSetSub(); // inside a settings sub-page: swipe right goes back to the menu
+      return;
+    }
+    // Overtime tab, or the Settings menu (top level): swipe switches between Calendar/Overtime/Settings.
+    var idx=TAB_ORDER.indexOf(curTab);
+    if(dx>0){if(idx>0)showTab(TAB_ORDER[idx-1]);}
+    else{if(idx<TAB_ORDER.length-1)showTab(TAB_ORDER[idx+1]);}
   },{passive:true});
 }
 
