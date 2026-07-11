@@ -724,7 +724,8 @@ var AR={
   'Tap the row that is yours:':'اضغط الصف الذي يخصّك:',
   'Check & fix each day, then continue. Leave a cell blank to skip that day.':'تحقّق وصحّح كل يوم، ثم تابع. اترك الخلية فارغة لتخطّي ذلك اليوم.',
   'Could not find a row of day numbers (1-31) — try Calendar grid mode instead':'لم يُعثر على صف بأرقام أيام (1-31) — جرّب وضع شبكة التقويم بدلاً من ذلك',
-  '✓ Use selected rows':'✓ استخدم الصفوف المختارة','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة'
+  '✓ Use selected rows':'✓ استخدم الصفوف المختارة','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة',
+  'Saved ✓ — syncing to phone…':'تم الحفظ ✓ — جارٍ المزامنة مع الهاتف…'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -791,8 +792,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.08-68';
-var APP_NOTE='يمكنك الآن السحب لليمين للرجوع من صفحة إعدادات فرعية إلى القائمة، والسحب يميناً/يساراً للتنقل بين التقويم والإضافي والإعدادات (شهر التقويم يبقى بالسحب كما هو) / You can now swipe right to go back from a settings sub-page to the menu, and swipe left/right to move between Calendar, Overtime and Settings (the Calendar tab still uses swipe for changing months).';
+var APP_VER='2026.07.11-69';
+var APP_NOTE='إصلاح: تعطيل "التذكير قبل الوردية" لم يكن يوقف التنبيهات المجدولة فعلياً على الهاتف — فقط Scriptable عند تشغيله يقدر يلغيها. الآن يتم تشغيل المزامنة تلقائياً فور تغيير هذا الإعداد / Fixed: turning off "Remind before shift" wasn\'t actually cancelling notifications already scheduled on the phone — only Scriptable running can do that. Sync now runs automatically the moment you change this setting.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -2132,7 +2133,12 @@ function savPhRate(){ST.phRate=parseFloat(document.getElementById('phRateInp').v
 function savCurr(){var v=document.getElementById('otCurr').value;ST.otCurr=v;var sym=document.getElementById('currSym');if(sym)sym.textContent=getCurrSym(v);savST();toast('Saved ✓');}
 
 // ── AUTO REMINDERS via SCRIPTABLE ────────────────────────────────────────────
-function savRemLead(){ST.remindLead=parseInt(document.getElementById('remLead').value,10);savST();scheduleInApp();toast(t('Saved ✓'));}
+// Changing this must reach the phone immediately, not just be saved: only Scriptable (when it
+// actually runs) can cancel/reschedule the local iOS notifications it already scheduled — a web
+// page can't reach into another app's notification queue. Without an immediate sync, turning
+// reminders off (or changing the lead time) silently does nothing until the user separately
+// remembers to tap Sync, so previously-scheduled alerts keep firing regardless of the new setting.
+function savRemLead(){ST.remindLead=parseInt(document.getElementById('remLead').value,10);savST();scheduleInApp();toast(t('Saved ✓ — syncing to phone…'));syncNow();}
 
 // ── SMART IN-APP ALERTS (Web Notification API + live timers) ─────────────────
 var _inAppTimers=[];
