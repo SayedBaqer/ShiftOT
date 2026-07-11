@@ -6,15 +6,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Shift Cal & OT"/>
-<meta name="theme-color" content="#0A0A12"/>
+<meta name="theme-color" content="#FFFFFF"/>
 <title>Shift Calendar &amp; OT</title>
 <link rel="apple-touch-icon" id="appIcon"/>
 <link rel="icon" id="favIcon"/>
 <style>
 :root{
-  --bg:#0A0A12;--s1:#12121E;--s2:#1A1A28;--bd:#222232;
-  --tx:#E8E8F8;--mu:#5A5A80;
-  --amber:#FBBF24;--cyan:#06B6D4;--green:#10B981;--indigo:#818CF8;
+  --bg:#FFFFFF;--s1:#F4F5F7;--s2:#E9EBEF;--bd:#D6D9E0;
+  --tx:#1E293B;--mu:#64748B;
+  --amber:#B45309;--cyan:#0E7490;--green:#047857;--indigo:#1D4ED8;
   --morning:#F59E0B;--morning-bg:#1E1400;
   --lmorning:#FBBF24;--lmorning-bg:#241A00;
   --afternoon:#10B981;--afternoon-bg:#001810;
@@ -26,7 +26,7 @@
   --training:#A855F7;--training-bg:#180A28;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;}
-html,body{height:100%;width:100%;position:fixed;overflow:hidden;background:#0A0A12;color:#E8E8F8;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+html,body{height:100%;width:100%;position:fixed;overflow:hidden;background:#FFFFFF;color:#1E293B;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 input,textarea,select{-webkit-user-select:text;user-select:text;}
 #app{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);padding-top:max(env(safe-area-inset-top),20px);}
 #hdr{flex-shrink:0;padding:8px 14px 6px;background:var(--bg);}
@@ -46,7 +46,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;}
 .cgr{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;padding:4px 8px 10px;gap:6px;flex:1;min-height:0;}
 .cd{border-radius:12px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:40px;border:2px solid transparent;position:relative;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow:hidden;}
 .cd:active{transform:scale(.95);}
-.cd.msel{outline:3px solid #818CF8;outline-offset:-1px;background:rgba(129,140,248,.30)!important;}
+.cd.msel{outline:3px solid var(--indigo);outline-offset:-1px;background:rgba(129,140,248,.30)!important;}
 .cd.xo{opacity:.2;pointer-events:none;}
 .cd.tod .dn{background:var(--tx);color:var(--bg);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:800;}
 .cd.hn{border-color:currentColor;}
@@ -93,7 +93,7 @@ input[type=time],input[type=number]{width:auto;}
 .sct{font-size:11px;font-weight:700;color:var(--mu);letter-spacing:.08em;text-transform:uppercase;margin:13px 0 6px;}
 .setChev{color:var(--mu);font-size:18px;font-weight:700;flex-shrink:0;margin-left:8px;}
 .tg{width:42px;height:25px;border-radius:13px;background:var(--bd);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
-.tg.on{background:#818CF8;}
+.tg.on{background:var(--indigo);}
 .tg::after{content:'';position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;}
 .tg.on::after{left:19.5px;}
 .stp{display:flex;align-items:center;gap:8px;}
@@ -167,7 +167,7 @@ input[type=time],input[type=number]{width:auto;}
             <div class="sr2" style="cursor:default">
               <div><div class="sl2">Background colour</div><div class="ss2">App background behind everything</div></div>
               <div style="display:flex;align-items:center;gap:8px">
-                <div id="bgSwatch" onclick="openBgPicker()" style="width:46px;height:38px;border-radius:8px;background:#0A0A12;border:1px solid var(--bd);cursor:pointer"></div>
+                <div id="bgSwatch" onclick="openBgPicker()" style="width:46px;height:38px;border-radius:8px;background:#FFFFFF;border:1px solid var(--bd);cursor:pointer"></div>
                 <button class="ib" onclick="resetBg()" title="Reset">&#8635;</button>
               </div>
             </div>
@@ -587,6 +587,7 @@ var SH={
   leave:    {n:'Annual Leave',e:'🏖',s:null,   f:null,   h:0, nd:false},
   training: {n:'Training',    e:'📚',s:'09:00',f:'17:00',h:8, nd:false},
 };
+var HL_HEX={y:'#FBBF24',r:'#EF4444',g:'#10B981',b:'#818CF8'};
 var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 // Capture factory defaults so appearance can be customised and reset.
@@ -609,7 +610,13 @@ function accentOn(col,bg){
   return out;
 }
 // Cell tints derive from the shift colour blended into the current background so they always match the theme.
-function recomputeSBG(){var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#0A0A12';Object.keys(SC).forEach(function(k){SBG[k]=mixCol(SC[k],bg,0.16);});}
+// A light background needs a heavier blend than a dark one — the same 16% mix that reads clearly against
+// a near-black bg becomes a barely-there pastel wash against white, making shifts hard to tell apart at a glance.
+function recomputeSBG(){
+  var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#FFFFFF';
+  var t=lumOf(bg)>0.55?0.32:0.16;
+  Object.keys(SC).forEach(function(k){SBG[k]=mixCol(SC[k],bg,t);});
+}
 function applyShiftCustom(){
   Object.keys(SH).forEach(function(k){SH[k].e=DEF_SE[k];SC[k]=DEF_SCv[k];});
   if(ST.shCustom)Object.keys(ST.shCustom).forEach(function(k){if(!SH[k])return;var c=ST.shCustom[k]||{};if(c.e)SH[k].e=c.e;if(c.c)SC[k]=c.c;});
@@ -778,10 +785,10 @@ function applyBg(){
     el.setProperty('--amber',light?'#B45309':'#FBBF24');
     el.setProperty('--cyan',light?'#0E7490':'#06B6D4');
     el.setProperty('--green',light?'#047857':'#10B981');
-    el.setProperty('--indigo',light?'#4F46E5':'#818CF8');
+    el.setProperty('--indigo',light?'#1D4ED8':'#818CF8');
   }
   function set(bg,s1,s2,bd,tx,mu){el.setProperty('--bg',bg);el.setProperty('--s1',s1);el.setProperty('--s2',s2);el.setProperty('--bd',bd);el.setProperty('--tx',tx);el.setProperty('--mu',mu);document.body.style.background=bg;var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',toHex(bg));}
-  if(!ST.bgColor){set('#0A0A12','#12121E','#1A1A28','#222232','#E8E8F8','#5A5A80');setAccents(false);recomputeSBG();return;}
+  if(!ST.bgColor){set('#FFFFFF','#F4F5F7','#E9EBEF','#D6D9E0','#1E293B','#64748B');setAccents(true);recomputeSBG();return;}
   var base=toHex(ST.bgColor);var c=hexToRgb(base);
   var lum=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;
   if(lum>0.55){ // light background → dark text, slightly darker surfaces
@@ -792,8 +799,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.11-69';
-var APP_NOTE='إصلاح: تعطيل "التذكير قبل الوردية" لم يكن يوقف التنبيهات المجدولة فعلياً على الهاتف — فقط Scriptable عند تشغيله يقدر يلغيها. الآن يتم تشغيل المزامنة تلقائياً فور تغيير هذا الإعداد / Fixed: turning off "Remind before shift" wasn\'t actually cancelling notifications already scheduled on the phone — only Scriptable running can do that. Sync now runs automatically the moment you change this setting.';
+var APP_VER='2026.07.11-70';
+var APP_NOTE='تصميم ألوان جديد: أبيض/رمادي فاتح كخلفية افتراضية مع لون أزرق غامق كتمييز أساسي، مع إعادة ضبط تباين النص وألوان الورديات لتكون أوضح وأكثر وضوحاً للعين / New colour scheme: white/light-grey default background with a dark-blue accent, with text contrast and shift-pattern colours re-tuned to be clearer and more visible.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1009,7 +1016,10 @@ function mkCell(date,other,tds){
   if(hasNote)cell.style.color=col;
   if(isTp)cell.style.outline='1px solid rgba(251,191,36,.25)';
   if(!other){cell.dataset.ds=ds;cell.onclick=(function(d){return function(){openDay(d);};})(ds);}
-  var dnCol=accentOn(col,hl?'#0A0A12':bg);
+  // Highlight classes paint a translucent (18%) tint over the page background, not a solid colour —
+  // so the day-number's contrast target must be THAT blended result, not a hardcoded dark assumption
+  // (which broke once the default theme became light: a pale pastel highlight needs dark text, not light).
+  var dnCol=accentOn(col,hl?mixCol(HL_HEX[hl]||'#818CF8',ST.bgColor||'#FFFFFF',0.18):bg);
   var dn=document.createElement('div');dn.className='dn';dn.style.color=dnCol;dn.textContent=date.getDate();
   var de=document.createElement('div');de.className='de';de.textContent=sh.e;
   cell.appendChild(dn);cell.appendChild(de);
@@ -2082,7 +2092,7 @@ function loadSettings(){
   var pR=document.getElementById('phRateInp');if(pR)pR.value=ST.phRate!=null?ST.phRate:1.5;
   var lt=document.getElementById('linkTog');if(lt)lt.classList.toggle('on',ST.linkCalOT!==false);
   var lg=document.getElementById('langSel');if(lg)lg.value=ST.lang||'en';
-  var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#0A0A12';
+  var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#FFFFFF';
   var rl=document.getElementById('remLead');if(rl)rl.value=String(ST.remindLead!=null?ST.remindLead:60);
   var cst=document.getElementById('calSyncTog');if(cst)cst.classList.toggle('on',!!ST.calSync);
   updateInAppUI();updateGistUI();
@@ -2091,9 +2101,9 @@ function loadSettings(){
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
 }
 function savLang(){ST.lang=document.getElementById('langSel').value;savST();applyLang();render();renderGuide();renderShiftAppearance();renderOTCfg();toast('Saved ✓');}
-function openBgPicker(){openColorPicker(ST.bgColor||'#0A0A12',setBgColor);}
+function openBgPicker(){openColorPicker(ST.bgColor||'#FFFFFF',setBgColor);}
 function setBgColor(c){ST.bgColor=c;savST();applyBg();render();renderShiftAppearance();var sw=document.getElementById('bgSwatch');if(sw)sw.style.background=c;toast('Saved ✓');}
-function resetBg(){ST.bgColor='';var sw=document.getElementById('bgSwatch');if(sw)sw.style.background='#0A0A12';savST();applyBg();render();renderShiftAppearance();toast('Reset ✓');}
+function resetBg(){ST.bgColor='';var sw=document.getElementById('bgSwatch');if(sw)sw.style.background='#FFFFFF';savST();applyBg();render();renderShiftAppearance();toast('Reset ✓');}
 function renderGuide(){
   var c=document.getElementById('guideSec');if(!c)return;
   var en=[
@@ -2123,7 +2133,7 @@ function renderGuide(){
     ['التحديثات','عند توفر إصدار جديد يظهر شريط تحديث بالأعلى يوضح الجديد — اضغطه لتحميل الأحدث.']
   ];
   var items=(LANG==='ar')?ar:en;var side=(LANG==='ar')?'right':'left';
-  c.innerHTML=items.map(function(it){return '<div style="background:var(--s2);border-'+side+':3px solid #818CF8;border-radius:10px;padding:9px 11px;margin-bottom:7px"><div style="font-weight:700;font-size:13px;margin-bottom:2px">'+it[0]+'</div><div style="font-size:12px;color:var(--mu);line-height:1.5">'+it[1]+'</div></div>';}).join('');
+  c.innerHTML=items.map(function(it){return '<div style="background:var(--s2);border-'+side+':3px solid var(--indigo);border-radius:10px;padding:9px 11px;margin-bottom:7px"><div style="font-weight:700;font-size:13px;margin-bottom:2px">'+it[0]+'</div><div style="font-size:12px;color:var(--mu);line-height:1.5">'+it[1]+'</div></div>';}).join('');
 }
 function savCS(v){ST.cs=v;savST();render();toast('Saved ✓');}
 function savRate(){ST.otRate=parseFloat(document.getElementById('otRate').value)||0.317;savST();toast('Saved ✓');}
@@ -2355,15 +2365,15 @@ function exportCalendarImage(){
   var W=cellW*7,H=headerH+wdH+rows*cellH;
   var canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
   var x=canvas.getContext('2d');
-  var bg=ST.bgColor||'#0A0A12';
+  var bg=ST.bgColor||'#FFFFFF';
   x.fillStyle=bg;x.fillRect(0,0,W,H);
-  var txCol=accentOn('#E8E8F8',bg);
+  var txCol=accentOn('#1E293B',bg);
   x.fillStyle=txCol;x.textAlign='center';x.textBaseline='middle';
   x.font='700 32px -apple-system,Helvetica,Arial,sans-serif';
   x.fillText(localMonth(m)+' '+y,W/2,headerH/2);
   var wd=(LANG==='ar')?AR.weekdays.map(function(s){return s.slice(0,3);}):WD_EN;
   x.font='700 15px -apple-system,Helvetica,Arial,sans-serif';
-  x.fillStyle=accentOn('#5A5A80',bg);
+  x.fillStyle=accentOn('#64748B',bg);
   for(var i=0;i<7;i++)x.fillText(wd[i],i*cellW+cellW/2,headerH+wdH/2);
   var d=1-startPad;
   for(var r=0;r<rows;r++){
@@ -2503,7 +2513,7 @@ function openEmojiPicker(k){
   EMOJIS.forEach(function(e){
     var b=document.createElement('div');b.textContent=e;
     var sel=SH[k]&&SH[k].e===e;
-    b.style.cssText='font-size:23px;text-align:center;padding:8px 0;background:var(--s2);border-radius:9px;cursor:pointer;border:2px solid '+(sel?'#818CF8':'transparent');
+    b.style.cssText='font-size:23px;text-align:center;padding:8px 0;background:var(--s2);border-radius:9px;cursor:pointer;border:2px solid '+(sel?'var(--indigo)':'transparent');
     b.onclick=(function(em){return function(){pickEmoji(em);};})(e);
     g.appendChild(b);
   });
@@ -2577,7 +2587,7 @@ function renderOTCfg(){
     var normalPortion=Math.max(0,s.h-patOTH);
     var wrap=document.createElement('div');
     wrap.style.cssText='background:'+bg+';border-left:3px solid '+col+';border-radius:12px;padding:12px;margin-bottom:9px';
-    var ttl=document.createElement('div');ttl.style.cssText='font-size:14px;font-weight:700;color:'+accentOn(col,ST.bgColor||'#0A0A12')+';margin-bottom:8px';ttl.textContent=s.e+' '+s.n+' ('+hu(s.h)+')';wrap.appendChild(ttl);
+    var ttl=document.createElement('div');ttl.style.cssText='font-size:14px;font-weight:700;color:'+accentOn(col,ST.bgColor||'#FFFFFF')+';margin-bottom:8px';ttl.textContent=s.e+' '+s.n+' ('+hu(s.h)+')';wrap.appendChild(ttl);
     var nb=document.createElement('div');nb.style.cssText='font-size:12px;padding:7px 10px;background:var(--s2);border-radius:7px;margin-bottom:6px';
     if(curSegs.length>0){var sd=curSegs.map(function(x){return hu(parseFloat(x.h).toFixed(1))+'×'+x.r;}).join(' + ');nb.innerHTML=t('Normal day')+': <b style="color:var(--tx)">'+hu(normalPortion.toFixed(1))+' '+t('normal')+' + '+sd+' '+t('OT')+'</b>';}
     else{nb.innerHTML=t('Normal day')+': <b style="color:var(--tx)">'+hu(s.h)+' — '+t('no OT pay')+'</b>';}
@@ -2699,7 +2709,7 @@ function refreshOT(){
         html+='<div style="padding:11px 14px;border-bottom:1px solid var(--bd)">';
         html+='<div style="display:flex;align-items:center;gap:10px">';
         html+='<div style="font-size:20px">'+sh.e+'</div>';
-        html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+accentOn(col,ST.bgColor||'#0A0A12')+'">'+fmtShort(date)+'</div>';
+        html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+accentOn(col,ST.bgColor||'#FFFFFF')+'">'+fmtShort(date)+'</div>';
         html+='<div style="font-size:11px;color:var(--mu)">'+reason+'</div></div>';
         html+='<div style="text-align:right"><div style="font-size:14px;font-weight:800;color:var(--amber)">'+hu(d.dayOtH.toFixed(1))+'</div>';
         html+='<div style="font-size:11px;color:var(--mu)">'+curr+d.dayOtPay.toFixed(3)+'</div></div></div>';
@@ -2740,7 +2750,7 @@ function refreshOT(){
     var keys=Object.keys(byType);
     if(!keys.length)html+='<div style="padding:14px;text-align:center;color:var(--mu)">'+t('No work days')+'</div>';
     keys.forEach(function(sk){
-      var data=byType[sk];var sh=SH[sk]||SH.off;var col=accentOn(SC[sk]||'#4B5563',ST.bgColor||'#0A0A12');
+      var data=byType[sk];var sh=SH[sk]||SH.off;var col=accentOn(SC[sk]||'#4B5563',ST.bgColor||'#FFFFFF');
       html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd)">';
       html+='<div style="font-size:18px">'+sh.e+'</div>';
       html+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+col+'">'+sh.n+'</div>';
