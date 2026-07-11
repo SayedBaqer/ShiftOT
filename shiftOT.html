@@ -33,9 +33,9 @@ input,textarea,select{-webkit-user-select:text;user-select:text;}
 #cnt{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
 #setPage,#otPage{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
 #nav{flex-shrink:0;display:flex;background:var(--s1);border-top:1px solid var(--bd);padding-bottom:max(env(safe-area-inset-bottom),8px);}
-.ntb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 2px;background:none;border:none;color:var(--mu);font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;}
+.ntb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 2px 6px;background:none;border:none;color:var(--mu);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;}
 .ntb.on{color:var(--indigo);}
-.ntb .ni{font-size:20px;}
+.ntb .ni{font-size:27px;line-height:1;}
 .hr{display:flex;align-items:center;justify-content:space-between;}
 .mnv{display:flex;align-items:center;gap:10px;}
 .mb{width:32px;height:32px;border-radius:50%;border:1px solid var(--bd);background:var(--s1);color:var(--tx);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
@@ -799,8 +799,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.11-70';
-var APP_NOTE='تصميم ألوان جديد: أبيض/رمادي فاتح كخلفية افتراضية مع لون أزرق غامق كتمييز أساسي، مع إعادة ضبط تباين النص وألوان الورديات لتكون أوضح وأكثر وضوحاً للعين / New colour scheme: white/light-grey default background with a dark-blue accent, with text contrast and shift-pattern colours re-tuned to be clearer and more visible.';
+var APP_VER='2026.07.11-71';
+var APP_NOTE='أيقونات الشريط السفلي أكبر الآن لتستغل المساحة الفارغة أسفل الشاشة بشكل أفضل / Bottom tab bar icons are now larger to better fill the empty space at the bottom of the screen.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
