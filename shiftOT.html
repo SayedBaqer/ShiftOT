@@ -588,7 +588,11 @@ var SH={
   training: {n:'Training',    e:'📚',s:'09:00',f:'17:00',h:8, nd:false},
 };
 var HL_HEX={y:'#FBBF24',r:'#EF4444',g:'#10B981',b:'#818CF8'};
-var SC={morning:'#F59E0B',lmorning:'#FBBF24',afternoon:'#10B981',night:'#818CF8',lnight:'#A78BFA',off:'#4B5563',sick:'#EF4444',leave:'#06B6D4',training:'#A855F7'};
+// Restrained blue/grey palette per user request ("too much colors selection") — the 5 rotating
+// duty shifts are shades of the SAME blue (light → dark following morning → night), off/leave/
+// training collapse into neutral greys, and sick keeps a single muted red as the one deliberate
+// exception (still worth flagging at a glance, unlike the rest of the rainbow this replaces).
+var SC={morning:'#93C5FD',lmorning:'#60A5FA',afternoon:'#3B82F6',night:'#1D4ED8',lnight:'#1E3A8A',off:'#94A3B8',sick:'#B91C1C',leave:'#64748B',training:'#475569'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 // Capture factory defaults so appearance can be customised and reset.
 var DEF_SE={},DEF_SCv={},DEF_SBGv={};
@@ -799,8 +803,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.11-71';
-var APP_NOTE='أيقونات الشريط السفلي أكبر الآن لتستغل المساحة الفارغة أسفل الشاشة بشكل أفضل / Bottom tab bar icons are now larger to better fill the empty space at the bottom of the screen.';
+var APP_VER='2026.07.12-72';
+var APP_NOTE='تقليل عدد ألوان الورديات: الورديات الخمس أصبحت درجات من نفس الأزرق (فاتح إلى غامق)، والراحة/الإجازة/التدريب رمادية، والمرضية حمراء مطفأة فقط — بدل قوس قزح من الألوان / Fewer shift colours: the 5 rotating duty shifts are now shades of the same blue (light to dark), off/leave/training are grey, and sick leave is the one muted red exception — instead of a rainbow of colours.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
