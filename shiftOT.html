@@ -275,6 +275,16 @@ input[type=time],input[type=number]{width:auto;}
 
         <div class="setSub" id="setSubAppearance" style="display:none">
           <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.6">Tap an emoji to change it (use your keyboard&#8217;s emoji), and pick a colour for each shift.</div>
+          <div class="sc2">
+            <div class="sr2" style="cursor:default">
+              <div><div class="sl2">Color intensity</div><div class="ss2">How strongly shift colours show on the calendar</div></div>
+              <select id="colorIntensitySel" onchange="savColorIntensity()" style="width:auto;padding:7px 10px">
+                <option value="light">Light</option>
+                <option value="medium">Medium</option>
+                <option value="vivid">Vivid</option>
+              </select>
+            </div>
+          </div>
           <div id="shAppSec"></div>
           <button class="btn bs" onclick="resetShiftAppearance()" style="margin-top:2px">&#8635; Reset appearance to default</button>
         </div>
@@ -616,11 +626,15 @@ function accentOn(col,bg){
   return out;
 }
 // Cell tints derive from the shift colour blended into the current background so they always match the theme.
-// A light background needs a heavier blend than a dark one — the same 16% mix that reads clearly against
+// A light background needs a heavier blend than a dark one — the same mix that reads clearly against
 // a near-black bg becomes a barely-there pastel wash against white, making shifts hard to tell apart at a glance.
+// The overall strength of that blend is user-adjustable (Settings → Shift Appearance → Color intensity),
+// since how much distinction a person wants between shift colors is a matter of taste, not one fixed value.
+var COLOR_INTENSITY={light:{dark:0.10,light:0.20},medium:{dark:0.16,light:0.32},vivid:{dark:0.24,light:0.48}};
 function recomputeSBG(){
   var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#FFFFFF';
-  var t=lumOf(bg)>0.55?0.32:0.16;
+  var level=COLOR_INTENSITY[(ST&&ST.colorIntensity)||'medium']||COLOR_INTENSITY.medium;
+  var t=lumOf(bg)>0.55?level.light:level.dark;
   Object.keys(SC).forEach(function(k){SBG[k]=mixCol(SC[k],bg,t);});
 }
 function applyShiftCustom(){
@@ -738,7 +752,9 @@ var AR={
   'Check & fix each day, then continue. Leave a cell blank to skip that day.':'تحقّق وصحّح كل يوم، ثم تابع. اترك الخلية فارغة لتخطّي ذلك اليوم.',
   'Could not find a row of day numbers (1-31) — try Calendar grid mode instead':'لم يُعثر على صف بأرقام أيام (1-31) — جرّب وضع شبكة التقويم بدلاً من ذلك',
   '✓ Use selected rows':'✓ استخدم الصفوف المختارة','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة',
-  'Saved ✓ — syncing to phone…':'تم الحفظ ✓ — جارٍ المزامنة مع الهاتف…'
+  'Saved ✓ — syncing to phone…':'تم الحفظ ✓ — جارٍ المزامنة مع الهاتف…',
+  'Color intensity':'شدة الألوان','How strongly shift colours show on the calendar':'مدى وضوح ألوان الورديات في التقويم',
+  'Light':'خفيف','Medium':'متوسط','Vivid':'زاهي'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -805,8 +821,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-75';
-var APP_NOTE='دعم أندرويد: أضِف التطبيق للشاشة الرئيسية بشكل صحيح (أيقونة ووضع تطبيق كامل)، و"إضافة إلى التقويم" الآن تُنزّل ملف .ics باسم صحيح على أندرويد بدل الاعتماد على سلوك سفاري الخاص بآيفون. مزامنة Scriptable التلقائية تبقى حصراً لآيفون — لا يوجد بديل على أندرويد / Android support: proper Add-to-Home-Screen (real icon + full-app mode), and "Add to Calendar" now downloads a correctly-named .ics file on Android instead of relying on iOS Safari-only behavior. The automatic Scriptable calendar sync remains iPhone-only — there is no Android equivalent.';
+var APP_VER='2026.07.12-76';
+var APP_NOTE='إعداد جديد: شدة الألوان (Settings → مظهر الورديات) — اختر خفيف/متوسط/زاهي للتحكم بمدى وضوح ألوان الورديات في التقويم / New setting: Color intensity (Settings → Shift Appearance) — choose Light/Medium/Vivid to control how strongly shift colors stand out on the calendar.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -2101,12 +2117,14 @@ function loadSettings(){
   var bg=document.getElementById('bgSwatch');if(bg)bg.style.background=ST.bgColor||'#FFFFFF';
   var rl=document.getElementById('remLead');if(rl)rl.value=String(ST.remindLead!=null?ST.remindLead:60);
   var cst=document.getElementById('calSyncTog');if(cst)cst.classList.toggle('on',!!ST.calSync);
+  var ci=document.getElementById('colorIntensitySel');if(ci)ci.value=ST.colorIntensity||'medium';
   updateInAppUI();updateGistUI();
   document.getElementById('yr').textContent=new Date().getFullYear();
   var vS=document.getElementById('verS');if(vS)vS.textContent=APP_VER;
   renderShiftAppearance();renderOTCfg();renderTpList();renderGuide();
 }
 function savLang(){ST.lang=document.getElementById('langSel').value;savST();applyLang();render();renderGuide();renderShiftAppearance();renderOTCfg();toast('Saved ✓');}
+function savColorIntensity(){ST.colorIntensity=document.getElementById('colorIntensitySel').value;savST();recomputeSBG();render();renderShiftAppearance();toast(t('Saved ✓'));}
 function openBgPicker(){openColorPicker(ST.bgColor||'#FFFFFF',setBgColor);}
 function setBgColor(c){ST.bgColor=c;savST();applyBg();render();renderShiftAppearance();var sw=document.getElementById('bgSwatch');if(sw)sw.style.background=c;toast('Saved ✓');}
 function resetBg(){ST.bgColor='';var sw=document.getElementById('bgSwatch');if(sw)sw.style.background='#FFFFFF';savST();applyBg();render();renderShiftAppearance();toast('Reset ✓');}
