@@ -6,8 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Shift Cal & OT"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#FFFFFF"/>
 <title>Shift Calendar &amp; OT</title>
+<link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" id="appIcon"/>
 <link rel="icon" id="favIcon"/>
 <style>
@@ -803,8 +805,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-74';
-var APP_NOTE='حقل "الساعات المعمولة" المخصص متاح الآن لأي يوم دوام وليس فقط أيام خارج الدوام — اضبط الساعات الفعلية لأي وردية عادية أيضاً / The custom "Hours worked" field is now available for any duty day, not just off-duty overrides — set the actual hours for a normal shift too.';
+var APP_VER='2026.07.12-75';
+var APP_NOTE='دعم أندرويد: أضِف التطبيق للشاشة الرئيسية بشكل صحيح (أيقونة ووضع تطبيق كامل)، و"إضافة إلى التقويم" الآن تُنزّل ملف .ics باسم صحيح على أندرويد بدل الاعتماد على سلوك سفاري الخاص بآيفون. مزامنة Scriptable التلقائية تبقى حصراً لآيفون — لا يوجد بديل على أندرويد / Android support: proper Add-to-Home-Screen (real icon + full-app mode), and "Add to Calendar" now downloads a correctly-named .ics file on Android instead of relying on iOS Safari-only behavior. The automatic Scriptable calendar sync remains iPhone-only — there is no Android equivalent.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -2308,6 +2310,12 @@ function openURL(u){
   document.body.appendChild(a);a.click();
   setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},1000);
 }
+// iPadOS 13+ reports as "MacIntel" in the UA string, so a touch-points check is needed alongside
+// the classic iPhone/iPad/iPod match — used only to pick the right file-handoff mechanism (Safari's
+// native .ics/share sheets vs a plain download), never to gate features outright.
+function isIOSDevice(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+}
 // ── CLOUD SYNC (GitHub Gist) — lets Scriptable fetch the LATEST schedule over the network ──
 function ghHeaders(){return {'Authorization':'Bearer '+ST.ghToken,'Accept':'application/vnd.github+json','Content-Type':'application/json'};}
 function silentSaveST(){try{localStorage.setItem('sc_ot_v1',JSON.stringify(ST));}catch(e){}}
@@ -2460,7 +2468,15 @@ function addToCalendarICS(){
   try{
     var blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
     var url=URL.createObjectURL(blob);
-    location.href=url;
+    if(isIOSDevice()){
+      location.href=url; // Safari recognizes text/calendar and offers its native "Add All to Calendar" sheet
+    } else {
+      // Android/desktop Chrome has no equivalent interstitial — download with a proper .ics filename
+      // so tapping the downloaded file opens correctly in Google Calendar or another calendar app.
+      var a=document.createElement('a');a.href=url;a.download='ShiftCal.ics';a.style.display='none';
+      document.body.appendChild(a);a.click();
+      setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},1000);
+    }
     setTimeout(function(){URL.revokeObjectURL(url);},4000);
   }catch(e){
     try{location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);}catch(e2){}
