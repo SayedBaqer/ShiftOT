@@ -600,11 +600,11 @@ var SH={
   training: {n:'Training',    e:'📚',s:'09:00',f:'17:00',h:8, nd:false},
 };
 var HL_HEX={y:'#FBBF24',r:'#EF4444',g:'#10B981',b:'#818CF8'};
-// Restrained blue/grey palette per user request ("too much colors selection") — the 5 rotating
-// duty shifts are shades of the SAME blue (light → dark following morning → night), off/leave/
-// training collapse into neutral greys, and sick keeps a single muted red as the one deliberate
-// exception (still worth flagging at a glance, unlike the rest of the rainbow this replaces).
-var SC={morning:'#93C5FD',lmorning:'#60A5FA',afternoon:'#3B82F6',night:'#1D4ED8',lnight:'#1E3A8A',off:'#94A3B8',sick:'#B91C1C',leave:'#64748B',training:'#475569'};
+// A single-hue lightness ramp (tried first) turned out too subtle to tell shifts apart at a
+// glance, even at max color-intensity — user feedback: "almost all same no significant difference".
+// Restored genuine hue variety (one distinct hue per shift), but every hue MUTED/darkened rather
+// than the original bright rainbow, keeping the calmer overall feel while staying distinguishable.
+var SC={morning:'#93761F',lmorning:'#59931F',afternoon:'#1F933C',night:'#1F3C93',lnight:'#591F93',off:'#64748B',sick:'#931F1F',leave:'#1F9393',training:'#931F76'};
 var SBG={morning:'#1E1400',lmorning:'#241A00',afternoon:'#001810',night:'#0D0A2A',lnight:'#130A30',off:'#111118',sick:'#1A0606',leave:'#001820',training:'#180A28'};
 // Capture factory defaults so appearance can be customised and reset.
 var DEF_SE={},DEF_SCv={},DEF_SBGv={};
@@ -630,7 +630,7 @@ function accentOn(col,bg){
 // a near-black bg becomes a barely-there pastel wash against white, making shifts hard to tell apart at a glance.
 // The overall strength of that blend is user-adjustable (Settings → Shift Appearance → Color intensity),
 // since how much distinction a person wants between shift colors is a matter of taste, not one fixed value.
-var COLOR_INTENSITY={light:{dark:0.10,light:0.20},medium:{dark:0.16,light:0.32},vivid:{dark:0.24,light:0.48}};
+var COLOR_INTENSITY={light:{dark:0.14,light:0.28},medium:{dark:0.22,light:0.42},vivid:{dark:0.34,light:0.60}};
 function recomputeSBG(){
   var bg=(ST&&ST.bgColor)?toHex(ST.bgColor):'#FFFFFF';
   var level=COLOR_INTENSITY[(ST&&ST.colorIntensity)||'medium']||COLOR_INTENSITY.medium;
@@ -821,8 +821,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-76';
-var APP_NOTE='إعداد جديد: شدة الألوان (Settings → مظهر الورديات) — اختر خفيف/متوسط/زاهي للتحكم بمدى وضوح ألوان الورديات في التقويم / New setting: Color intensity (Settings → Shift Appearance) — choose Light/Medium/Vivid to control how strongly shift colors stand out on the calendar.';
+var APP_VER='2026.07.12-77';
+var APP_NOTE='إصلاح: الورديات كانت تبدو شبه متطابقة رغم إعداد شدة الألوان — السبب أن الورديات الخمس كانت مجرد درجات من نفس اللون الأزرق. الآن لكل وردية لونها الخاص (مطفأ وليس صارخاً) مع فروقات حقيقية بينها / Fixed: shifts looked almost identical even at max color intensity — the root cause was the 5 duty shifts being shades of the same blue. Each shift now has its own distinct (muted, not garish) color with real separation between them.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
