@@ -341,7 +341,7 @@ input[type=time],input[type=number]{width:auto;}
     <div id="otRow" style="display:none;margin-top:12px;padding:11px 0;border-top:1px solid var(--bd)">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div><div style="font-size:14px;font-weight:600">Overtime</div><div style="font-size:12px;color:var(--mu);margin-top:1px" id="otDesc">-</div>
-        <div id="partialRow" style="display:none;margin-top:8px;align-items:center;gap:8px"><div style="font-size:12px;color:var(--mu)">Hours (Off-Duty):</div><select id="otHoursEl" onchange="setOTHours(this.value)" style="width:auto;padding:6px 10px;font-size:13px"><option value="">Full shift</option><option value="4">4h (half day)</option><option value="8">8h</option><option value="12">12h</option></select></div></div>
+        <div id="partialRow" style="display:none;margin-top:8px;align-items:center;gap:8px"><div style="font-size:12px;color:var(--mu)">Hours (Off-Duty):</div><input type="number" id="otHoursEl" min="0" max="24" step="0.5" placeholder="Full shift" onchange="setOTHours(this.value)" style="width:90px;padding:6px 10px;font-size:13px"/></div></div>
         <select id="otSel" style="width:auto;padding:7px 10px;font-size:13px" onchange="onOTSel(this.value)">
           <option value="auto">Auto</option>
           <option value="yes">Yes - OT</option>
@@ -803,8 +803,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-72';
-var APP_NOTE='تقليل عدد ألوان الورديات: الورديات الخمس أصبحت درجات من نفس الأزرق (فاتح إلى غامق)، والراحة/الإجازة/التدريب رمادية، والمرضية حمراء مطفأة فقط — بدل قوس قزح من الألوان / Fewer shift colours: the 5 rotating duty shifts are now shades of the same blue (light to dark), off/leave/training are grey, and sick leave is the one muted red exception — instead of a rainbow of colours.';
+var APP_VER='2026.07.12-73';
+var APP_NOTE='ساعات الإضافي (خارج الدوام) أصبحت حقل إدخال حر — اكتب أي عدد ساعات تريده مثل 0.5، 1، 2، 3 بدل قائمة خيارات محدودة / Off-duty overtime hours is now a free-entry field — type any number of hours you want, like 0.5, 1, 2, 3, instead of a fixed list of options.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
