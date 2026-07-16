@@ -341,7 +341,7 @@ input[type=time],input[type=number]{width:auto;}
     <div id="otRow" style="display:none;margin-top:12px;padding:11px 0;border-top:1px solid var(--bd)">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div><div style="font-size:14px;font-weight:600">Overtime</div><div style="font-size:12px;color:var(--mu);margin-top:1px" id="otDesc">-</div>
-        <div id="partialRow" style="display:none;margin-top:8px;align-items:center;gap:8px"><div style="font-size:12px;color:var(--mu)">Hours (Off-Duty):</div><input type="number" id="otHoursEl" min="0" max="24" step="0.5" placeholder="Full shift" onchange="setOTHours(this.value)" style="width:90px;padding:6px 10px;font-size:13px"/></div></div>
+        <div id="partialRow" style="display:none;margin-top:8px;align-items:center;gap:8px"><div style="font-size:12px;color:var(--mu)">Hours worked:</div><input type="number" id="otHoursEl" min="0" max="24" step="0.5" placeholder="Full shift" onchange="setOTHours(this.value)" style="width:90px;padding:6px 10px;font-size:13px"/></div></div>
         <select id="otSel" style="width:auto;padding:7px 10px;font-size:13px" onchange="onOTSel(this.value)">
           <option value="auto">Auto</option>
           <option value="yes">Yes - OT</option>
@@ -683,7 +683,7 @@ var AR={
   'Sun':'الأحد','Mon':'الاثنين','Tue':'الثلاثاء','Wed':'الأربعاء','Thu':'الخميس','Fri':'الجمعة','Sat':'السبت',
   'SUMMARY':'الملخص','OT HRS':'ساعات إضافية','PH HRS':'ساعات عطلة','TOTAL PAY':'إجمالي الأجر','OT+PH':'إضافي+عطلة',
   '📋 Copy schedule':'📋 نسخ الجدول','✕ Clear overrides for selected':'✕ مسح تعديلات المحدد',
-  'Hours (Off-Duty):':'الساعات (خارج الدوام):','Longer shift':'وردية أطول','Shift swap (same hours) — no auto OT':'تبديل وردية (نفس الساعات) — لا إضافي تلقائي',
+  'Hours worked:':'الساعات المعمولة:','Longer shift':'وردية أطول','Shift swap (same hours) — no auto OT':'تبديل وردية (نفس الساعات) — لا إضافي تلقائي',
   'Reset ✓':'تم الاسترجاع ✓','Saved ✓':'تم الحفظ ✓','Pattern saved ✓':'تم حفظ النمط ✓','Period saved ✓':'تم حفظ الفترة ✓','Appearance reset ✓':'تم استرجاع المظهر ✓',
   'Choose colour':'اختر لوناً','Custom colour':'لون مخصص','Choose icon':'اختر أيقونة','Use this':'استخدم هذه',
   'Currency':'العملة','+ Add Temporary Period Pattern':'+ إضافة نمط فترة مؤقتة',
@@ -803,8 +803,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-73';
-var APP_NOTE='ساعات الإضافي (خارج الدوام) أصبحت حقل إدخال حر — اكتب أي عدد ساعات تريده مثل 0.5، 1، 2، 3 بدل قائمة خيارات محدودة / Off-duty overtime hours is now a free-entry field — type any number of hours you want, like 0.5, 1, 2, 3, instead of a fixed list of options.';
+var APP_VER='2026.07.12-74';
+var APP_NOTE='حقل "الساعات المعمولة" المخصص متاح الآن لأي يوم دوام وليس فقط أيام خارج الدوام — اضبط الساعات الفعلية لأي وردية عادية أيضاً / The custom "Hours worked" field is now available for any duty day, not just off-duty overrides — set the actual hours for a normal shift too.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -946,13 +946,15 @@ function computeDay(ds){
   } else {
     var patSegs=cfg.patOT||[];
     var patOTH=patSegs.reduce(function(a,s){return a+(parseFloat(s.h)||0);},0);
-    var normH=Math.max(0,shiftH-patOTH);
+    // dutyH (shiftH, or a custom hours override for this specific day) is the total hours actually
+    // worked — OT segments from config still apply on top, with whatever's left over at normal rate.
+    var normH=Math.max(0,dutyH-patOTH);
     if(normH>0){segs.push({h:normH,r:1.0,label:''});normalH+=normH;}
     patSegs.forEach(function(s){
       var h=parseFloat(s.h)||0;var r=parseFloat(s.r)||1.5;
       segs.push({h:h,r:r,label:'OT'});otH+=h;otPay+=h*rate*r;
     });
-    if(segs.length===0){segs=[{h:shiftH,r:1.0,label:''}];normalH=shiftH;}
+    if(segs.length===0){segs=[{h:dutyH,r:1.0,label:''}];normalH=dutyH;}
   }
   return{segs:segs,otH:otH,otPay:otPay,normalH:normalH,phPay:phPay,isPH:isPH,isPhOff:false};
 }
@@ -971,8 +973,7 @@ function calcOT(fromDs,toDs){
       days.push({ds:ds,sk:sk,sh:SH[sk]||SH.off,segs:r.segs,dayH:8,dayOtH:0,dayOtPay:0,
         normalH:0,isOT:false,isPH:true,isPhOff:true,phPay:r.phPay,base:getBase(ds)});
     } else if(sh&&sh.s){
-      var dayH=ST.otHours&&ST.otHours[ds]&&isOT(ds)&&(!SH[getBase(ds)]||!SH[getBase(ds)].s)
-        ?parseFloat(ST.otHours[ds]):sh.h;
+      var dayH=(ST.otHours&&ST.otHours[ds]!=null)?parseFloat(ST.otHours[ds]):sh.h;
       totalH+=dayH;
       if(r.isPH){phH+=dayH;phPay+=r.phPay;}
       else{otH+=r.otH;otPay+=r.otPay;}
@@ -1176,15 +1177,14 @@ function updateOTRow(sk){
   if(isOffDuty){
     var dR=(ST.otRateDay&&ST.otRateDay[editDs]!=null)?parseFloat(ST.otRateDay[editDs]):(parseFloat(ST.offRate)||1.5);
     desc='Off→Duty (auto OT): all hours × '+dR;
-    if(partRow){partRow.style.display='flex';}
-    var hoursEl=document.getElementById('otHoursEl');
-    if(hoursEl&&ST.otHours&&ST.otHours[editDs])hoursEl.value=String(ST.otHours[editDs]);
-    else if(hoursEl)hoursEl.value='';
-  } else {
-    if(partRow)partRow.style.display='none';
-    if(SH[sk].h>(baseSh&&baseSh.h||0)){desc='Longer shift: '+((baseSh&&baseSh.h)||0)+'h base + '+(SH[sk].h-((baseSh&&baseSh.h)||0))+'h extra — mark OT=Yes to count extra';}
-    else if(sk!==base){desc='Shift swap (same hours) — no auto OT';}
-  }
+  } else if(SH[sk].h>(baseSh&&baseSh.h||0)){desc='Longer shift: '+((baseSh&&baseSh.h)||0)+'h base + '+(SH[sk].h-((baseSh&&baseSh.h)||0))+'h extra — mark OT=Yes to count extra';}
+  else if(sk!==base){desc='Shift swap (same hours) — no auto OT';}
+  // Custom hours override is available for ANY duty day, not just off→duty — e.g. worked a
+  // shortened or extended shift and want the actual hours counted instead of the shift's default.
+  if(partRow)partRow.style.display='flex';
+  var hoursEl=document.getElementById('otHoursEl');
+  if(hoursEl&&ST.otHours&&ST.otHours[editDs]!=null)hoursEl.value=String(ST.otHours[editDs]);
+  else if(hoursEl)hoursEl.value='';
   if(otDesc)otDesc.textContent=desc;
 }
 
