@@ -801,6 +801,9 @@ function applyLang(){
 // ── THEME (background colour re-themes the whole app) ────────────────────────
 function hexToRgb(h){h=toHex(h).replace('#','');return{r:parseInt(h.substr(0,2),16),g:parseInt(h.substr(2,2),16),b:parseInt(h.substr(4,2),16)};}
 function shade(hex,amt){var c=hexToRgb(hex);function ch(v){return Math.max(0,Math.min(255,Math.round(amt>=0?v+(255-v)*amt:v*(1+amt))));}return 'rgb('+ch(c.r)+','+ch(c.g)+','+ch(c.b)+')';}
+// Tracks the current --tx/--bg values in JS (mirroring the CSS custom properties) so the "today"
+// circle badge's own background is known when computing its day-number text contrast — see mkCell().
+var CUR_TX='#1E293B',CUR_BG='#FFFFFF';
 function applyBg(){
   var el=document.documentElement.style;
   function setAccents(light){
@@ -809,7 +812,7 @@ function applyBg(){
     el.setProperty('--green',light?'#047857':'#10B981');
     el.setProperty('--indigo',light?'#1D4ED8':'#818CF8');
   }
-  function set(bg,s1,s2,bd,tx,mu){el.setProperty('--bg',bg);el.setProperty('--s1',s1);el.setProperty('--s2',s2);el.setProperty('--bd',bd);el.setProperty('--tx',tx);el.setProperty('--mu',mu);document.body.style.background=bg;var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',toHex(bg));}
+  function set(bg,s1,s2,bd,tx,mu){el.setProperty('--bg',bg);el.setProperty('--s1',s1);el.setProperty('--s2',s2);el.setProperty('--bd',bd);el.setProperty('--tx',tx);el.setProperty('--mu',mu);document.body.style.background=bg;CUR_TX=tx;CUR_BG=bg;var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',toHex(bg));}
   if(!ST.bgColor){set('#FFFFFF','#F4F5F7','#E9EBEF','#D6D9E0','#1E293B','#64748B');setAccents(true);recomputeSBG();return;}
   var base=toHex(ST.bgColor);var c=hexToRgb(base);
   var lum=(0.2126*c.r+0.7152*c.g+0.0722*c.b)/255;
@@ -821,8 +824,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-77';
-var APP_NOTE='إصلاح: الورديات كانت تبدو شبه متطابقة رغم إعداد شدة الألوان — السبب أن الورديات الخمس كانت مجرد درجات من نفس اللون الأزرق. الآن لكل وردية لونها الخاص (مطفأ وليس صارخاً) مع فروقات حقيقية بينها / Fixed: shifts looked almost identical even at max color intensity — the root cause was the 5 duty shifts being shades of the same blue. Each shift now has its own distinct (muted, not garish) color with real separation between them.';
+var APP_VER='2026.07.12-78';
+var APP_NOTE='إصلاح: رقم اليوم داخل دائرة "اليوم الحالي" كان قد يصبح غير مرئي حسب لون الوردية — كان لون النص يُحسب بالنسبة لخلفية الوردية بدل خلفية الدائرة نفسها. الآن يُحسب تلقائياً وبشكل صحيح دائماً / Fixed: the day-number inside the "today" circle could become invisible depending on the shift color — its text contrast was computed against the shift's background instead of the circle\'s own background. Now computed correctly and automatically every time.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1042,7 +1045,12 @@ function mkCell(date,other,tds){
   // Highlight classes paint a translucent (18%) tint over the page background, not a solid colour —
   // so the day-number's contrast target must be THAT blended result, not a hardcoded dark assumption
   // (which broke once the default theme became light: a pale pastel highlight needs dark text, not light).
-  var dnCol=accentOn(col,hl?mixCol(HL_HEX[hl]||'#818CF8',ST.bgColor||'#FFFFFF',0.18):bg);
+  // The "today" badge is its own special case: CSS gives it a solid circular background of var(--tx),
+  // completely replacing the cell's own background behind that number — contrast must target THAT
+  // circle color, not the cell's, or the day-number can end up low-contrast/invisible depending on
+  // which shift color the day happens to have (an inline style would otherwise silently win over the
+  // CSS rule that tried to handle this, since inline styles beat class selectors in specificity).
+  var dnCol=isToday?accentOn(CUR_BG,CUR_TX):accentOn(col,hl?mixCol(HL_HEX[hl]||'#818CF8',ST.bgColor||'#FFFFFF',0.18):bg);
   var dn=document.createElement('div');dn.className='dn';dn.style.color=dnCol;dn.textContent=date.getDate();
   var de=document.createElement('div');de.className='de';de.textContent=sh.e;
   cell.appendChild(dn);cell.appendChild(de);
