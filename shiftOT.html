@@ -504,6 +504,7 @@ input[type=time],input[type=number]{width:auto;}
       <button class="btn bp" onclick="parseExcelWorkbook()" style="margin-top:4px">&#128269; Parse with these months</button>
     </div>
     <div id="xlsxRowPickUI" style="display:none;max-height:340px;overflow-y:auto"></div>
+    <div id="xlsxOverlapUI" style="display:none;max-height:400px;overflow-y:auto"></div>
     <div style="text-align:center;font-size:11px;color:var(--mu);margin:10px 0;text-transform:uppercase;letter-spacing:.06em">&mdash; or from a photo &mdash;</div>
     <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="handlePhotoFile(this.files[0])"/>
     <button class="btn bs" onclick="document.getElementById('photoFile').click()">&#128248; Import from Photo (OCR, beta)</button>
@@ -754,7 +755,11 @@ var AR={
   '✓ Use selected rows':'✓ استخدم الصفوف المختارة','At shift start':'عند بداية الوردية','15 min before':'قبل 15 دقيقة','30 min before':'قبل 30 دقيقة','1 hour before':'قبل ساعة','2 hours before':'قبل ساعتين','3 hours before':'قبل 3 ساعات','12 hours before':'قبل 12 ساعة',
   'Saved ✓ — syncing to phone…':'تم الحفظ ✓ — جارٍ المزامنة مع الهاتف…',
   'Color intensity':'شدة الألوان','How strongly shift colours show on the calendar':'مدى وضوح ألوان الورديات في التقويم',
-  'Light':'خفيف','Medium':'متوسط','Vivid':'زاهي'
+  'Light':'خفيف','Medium':'متوسط','Vivid':'زاهي',
+  'Overlapping dates found between sheets — choose which is newest and the range':'يوجد تداخل في التواريخ بين الأوراق — اختر الورقة الأحدث والنطاق',
+  'Overlapping days:':'الأيام المتداخلة:','Which sheet is the latest/authoritative one?':'ما هي الورقة الأحدث/المعتمدة؟',
+  'The chosen sheet\'s data is used for this date range; everything outside it merges normally.':'تُستخدم بيانات الورقة المختارة لهذا النطاق؛ وكل ما هو خارجه يُدمج بشكل طبيعي.',
+  '✓ Apply and merge':'✓ تطبيق ودمج'
 };
 function t(s){return (LANG==='ar'&&AR[s])?AR[s]:s;}
 function hu(h){return h+(LANG==='ar'?'س':'h');}
@@ -824,8 +829,8 @@ function applyBg(){
   recomputeSBG();
 }
 var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-var APP_VER='2026.07.12-79';
-var APP_NOTE='إصلاح: رقم اليوم داخل دائرة "اليوم الحالي" كان قد يصبح غير مرئي حسب لون الوردية — كان لون النص يُحسب بالنسبة لخلفية الوردية بدل خلفية الدائرة نفسها. الآن يُحسب تلقائياً وبشكل صحيح دائماً / Fixed: the day-number inside the "today" circle could become invisible depending on the shift color — its text contrast was computed against the shift\'s background instead of the circle\'s own background. Now computed correctly and automatically every time.';
+var APP_VER='2026.07.18-80';
+var APP_NOTE='استيراد إكسل: عند تداخل تواريخ بين أكثر من ورقة، يظهر الآن اختيار لتحديد الورقة الأحدث ونطاق التاريخ الذي تُطبَّق عليه بدل الدمج التلقائي الصامت / Excel import: when dates overlap between two or more sheets, you now get a choice to pick the newest sheet and the date range it applies to, instead of a silent automatic merge.';
 
 // ── DEFAULT OT CONFIG ────────────────────────────────────────────────────────
 var DEF_OT={
@@ -1747,7 +1752,7 @@ function parseExcelWorkbook(){
     var hdr=findDayHeaderRowXlsx(rows);
     if(hdr){teamSheets.push({name:name,rows:rows,headerIdx:hdr.idx,anchor:anchor});return;}
     var got=parseSheetRows(rows,anchor);
-    if(got.length)all=all.concat(got);
+    if(got.length)all=all.concat(got.map(function(p){return{ds:p.ds,code:p.code,sheet:name};}));
   });
   xlsxStrategyPairs=all;
   if(teamSheets.length){
@@ -1755,7 +1760,7 @@ function parseExcelWorkbook(){
     renderXlsxRowPicker(teamSheets);
     return;
   }
-  finishExcelImport(all);
+  resolveOverlapsThenFinish(all);
 }
 function renderXlsxRowPicker(teamSheets){
   var st=document.getElementById('xlsxStatus');
@@ -1800,10 +1805,91 @@ function finishXlsxRowPick(){
     var headerRow=sheet.rows[sheet.headerIdx]||[];
     var dataRow=sheet.rows[ri]||[];
     var pairs=extractDayCodePairsXlsx(headerRow,dataRow);
-    all=all.concat(datesFromDayCodePairs(pairs,sheet.anchor.getFullYear(),sheet.anchor.getMonth()));
+    var dated=datesFromDayCodePairs(pairs,sheet.anchor.getFullYear(),sheet.anchor.getMonth());
+    all=all.concat(dated.map(function(p){return{ds:p.ds,code:p.code,sheet:sheet.name};}));
   });
   var pk=document.getElementById('xlsxRowPickUI');if(pk)pk.style.display='none';
-  finishExcelImport(all);
+  resolveOverlapsThenFinish(all);
+}
+// If two or more sheets both cover the same date(s) with possibly-conflicting codes, silently
+// letting whichever was processed last win (array order) can produce a wrong, invisible result —
+// e.g. an old full-month sheet quietly overwriting a newer corrected sheet. Detect any such overlap
+// and let the user explicitly pick which sheet is the authoritative/latest one for a chosen date
+// range, instead of guessing; when there's no overlap at all this adds zero extra steps.
+var xlsxOverlapPairs=[];
+function findXlsxOverlap(all){
+  var byDs={};
+  all.forEach(function(p){(byDs[p.ds]=byDs[p.ds]||{})[p.sheet]=true;});
+  var conflictDs=[],sheetSet={};
+  Object.keys(byDs).forEach(function(ds){
+    var sheets=Object.keys(byDs[ds]);
+    if(sheets.length>1){conflictDs.push(ds);sheets.forEach(function(s){sheetSet[s]=true;});}
+  });
+  conflictDs.sort();
+  return{conflictDs:conflictDs,sheets:Object.keys(sheetSet)};
+}
+function resolveOverlapsThenFinish(all){
+  var ov=findXlsxOverlap(all);
+  if(!ov.conflictDs.length){finishExcelImport(all);return;}
+  xlsxOverlapPairs=all;
+  renderXlsxOverlapUI(ov);
+}
+function renderXlsxOverlapUI(ov){
+  var st=document.getElementById('xlsxStatus');
+  if(st)st.textContent=t('Overlapping dates found between sheets — choose which is newest and the range');
+  var xu=document.getElementById('xlsxSheetsUI');if(xu)xu.style.display='none';
+  var pk=document.getElementById('xlsxRowPickUI');if(pk)pk.style.display='none';
+  var ui=document.getElementById('xlsxOverlapUI');if(!ui)return;
+  ui.innerHTML='';
+  var info=document.createElement('div');
+  info.style.cssText='font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5';
+  info.textContent=t('Overlapping days:')+' '+ov.conflictDs.length+' ('+ov.conflictDs[0]+' → '+ov.conflictDs[ov.conflictDs.length-1]+')';
+  ui.appendChild(info);
+  var lbl=document.createElement('div');
+  lbl.style.cssText='font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px';
+  lbl.textContent=t('Which sheet is the latest/authoritative one?');
+  ui.appendChild(lbl);
+  var group=document.createElement('div');group.className='sc2';
+  ov.sheets.forEach(function(sn,i){
+    var row=document.createElement('div');row.className='sr2';row.style.cursor='pointer';
+    var lblDiv=document.createElement('div');lblDiv.className='sl2';lblDiv.textContent=sn;
+    var radio=document.createElement('input');radio.type='radio';radio.name='xlsxOverlapWinner';radio.value=sn;if(i===0)radio.checked=true;
+    row.appendChild(lblDiv);row.appendChild(radio);
+    row.onclick=function(e){if(e.target!==radio)radio.checked=true;};
+    group.appendChild(row);
+  });
+  ui.appendChild(group);
+  var rangeRow=document.createElement('div');
+  rangeRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:8px 0';
+  rangeRow.innerHTML='<div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">'+t('From')+'</div><input type="date" id="xlsxOverlapFrom" value="'+ov.conflictDs[0]+'"/></div>'+
+    '<div><div style="font-size:12px;color:var(--mu);margin-bottom:3px">'+t('To')+'</div><input type="date" id="xlsxOverlapTo" value="'+ov.conflictDs[ov.conflictDs.length-1]+'"/></div>';
+  ui.appendChild(rangeRow);
+  var note=document.createElement('div');
+  note.style.cssText='font-size:11px;color:var(--mu);margin-bottom:8px;line-height:1.5';
+  note.textContent=t('The chosen sheet\'s data is used for this date range; everything outside it merges normally.');
+  ui.appendChild(note);
+  var btn=document.createElement('button');
+  btn.className='btn bp';btn.textContent=t('✓ Apply and merge');
+  btn.onclick=applyXlsxOverlapResolution;
+  ui.appendChild(btn);
+  ui.style.display='block';
+}
+function applyXlsxOverlapResolution(){
+  var winnerEl=document.querySelector('input[name=xlsxOverlapWinner]:checked');
+  var winner=winnerEl?winnerEl.value:null;
+  var from=document.getElementById('xlsxOverlapFrom').value;
+  var to=document.getElementById('xlsxOverlapTo').value;
+  var byDate={};
+  xlsxOverlapPairs.forEach(function(p){byDate[p.ds]=p.code;});
+  if(winner&&from&&to){
+    xlsxOverlapPairs.forEach(function(p){
+      if(p.sheet===winner&&p.ds>=from&&p.ds<=to)byDate[p.ds]=p.code;
+    });
+  }
+  var dsList=Object.keys(byDate).sort();
+  var pairs=dsList.map(function(ds){return{ds:ds,code:byDate[ds]};});
+  var ui=document.getElementById('xlsxOverlapUI');if(ui){ui.style.display='none';ui.innerHTML='';}
+  finishExcelImport(pairs);
 }
 function finishExcelImport(pairs){
   var st=document.getElementById('xlsxStatus');
@@ -2009,7 +2095,8 @@ function openImport(){
   var xs=document.getElementById('xlsxStatus');if(xs)xs.textContent='';
   var xu=document.getElementById('xlsxSheetsUI');if(xu)xu.style.display='none';
   var xrp=document.getElementById('xlsxRowPickUI');if(xrp){xrp.style.display='none';xrp.innerHTML='';}
-  xlsxWb=null;xlsxTeamSheets=[];xlsxStrategyPairs=[];xlsxRowSelection={};
+  var xov=document.getElementById('xlsxOverlapUI');if(xov){xov.style.display='none';xov.innerHTML='';}
+  xlsxWb=null;xlsxTeamSheets=[];xlsxStrategyPairs=[];xlsxRowSelection={};xlsxOverlapPairs=[];
   var photoFileEl=document.getElementById('photoFile');if(photoFileEl)photoFileEl.value='';
   var photoCodesEl=document.getElementById('photoCodes');if(photoCodesEl)photoCodesEl.value='';
   var photoStEl=document.getElementById('photoStatus');if(photoStEl)photoStEl.textContent='';
