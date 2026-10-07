@@ -3348,21 +3348,14 @@ function getEntitlementPlugin(){
 function cachedIsPro(){try{return localStorage.getItem('cachedIsPro')==='1';}catch(e){return false;}}
 function setCachedIsPro(v){try{localStorage.setItem('cachedIsPro',v?'1':'0');}catch(e){}}
 var Entitlements={
-  pro:cachedIsPro(),
+  // This legacy copy is retiring in favor of the real ShiftRota app — every visitor gets
+  // Pro unconditionally so a full, unrestricted "Export Backup" carries every feature's
+  // data across to the new app, with nothing left stuck behind a paywall.
+  pro:true,
   products:[],
   overtimeUnlocked:function(){return this.pro;},
   overtimeDaysLeft:function(){return 0;},
-  refresh:async function(){
-    var plugin=getEntitlementPlugin();
-    if(!plugin)return;
-    try{
-      var res=await plugin.getStatus();
-      this.pro=!!(res&&res.isPro);
-      setCachedIsPro(this.pro);
-      this.products=(res&&res.products)||[];
-    }catch(e){}
-    onEntitlementsChanged();
-  }
+  refresh:async function(){return;}
 };
 function onEntitlementsChanged(){
   // Re-resolves layout direction too — losing Pro should fall back from a manual
